@@ -317,6 +317,8 @@ const cellPcbAssemblyData = [
   { id: 'ASM-CP-003', cellSn: 'CELL-20260511-003', pcbSn: 'PCB-20260511-003', time: '2026-05-11 09:10', operator: '张三', status: '已组装', testStatus: '已测试', testResult: '不合格' },
   { id: 'ASM-CP-004', cellSn: 'CELL-20260511-004', pcbSn: 'PCB-20260511-004', time: '', operator: '', status: '待组装', testStatus: '未测试', testResult: '' },
   { id: 'ASM-CP-005', cellSn: 'CELL-20260511-005', pcbSn: 'PCB-20260511-005', time: '', operator: '', status: '待组装', testStatus: '未测试', testResult: '' },
+  { id: 'ASM-CP-006', cellSn: 'CELL-20260512-006', pcbSn: 'PCB-20260512-006', time: '2026-05-12 10:20', operator: '王五', status: '组装失败', testStatus: '未测试', testResult: '' },
+  { id: 'ASM-CP-007', cellSn: 'CELL-20260512-007', pcbSn: 'PCB-20260512-007', time: '2026-05-12 11:05', operator: '赵六', status: '组装失败', testStatus: '未测试', testResult: '' },
 ]
 
 /* 成品组装 - 半成品与外壳组装数据 */
@@ -325,6 +327,7 @@ const semiShellAssemblyData = [
   { id: 'ASM-SS-002', cellSn: 'ASM-CP-002', pcbSn: 'SHELL-20260510-002', shellSn: 'PB-10000mAh-A', time: '2026-05-10 09:50', operator: '王五', status: '已组装', testStatus: '已测试', testResult: '合格' },
   { id: 'ASM-SS-003', cellSn: 'ASM-CP-003', pcbSn: 'SHELL-20260511-003', shellSn: 'PB-20000mAh-B', time: '2026-05-11 10:15', operator: '李四', status: '已组装', testStatus: '已测试', testResult: '不合格' },
   { id: 'ASM-SS-004', cellSn: 'ASM-CP-004', pcbSn: 'SHELL-20260511-004', shellSn: 'PB-20000mAh-B', time: '', operator: '', status: '待组装', testStatus: '未测试', testResult: '' },
+  { id: 'ASM-SS-005', cellSn: 'ASM-CP-005', pcbSn: 'SHELL-20260512-005', shellSn: 'PB-10000mAh-A', time: '2026-05-12 14:30', operator: '赵六', status: '组装失败', testStatus: '未测试', testResult: '' },
 ]
 
 /* 生产工单数据 */
@@ -3145,7 +3148,7 @@ function LabelPrintPage() {
 }
 /* ---------- 10. 成品组装 ---------- */
 function AssemblyPage() {
-  const [activeTab, setActiveTab] = useState<'cellPcb' | 'semiShell'>('cellPcb')
+  const [activeTab, setActiveTab] = useState<'cellPcb' | 'semiShell' | 'failed'>('cellPcb')
   const [searchTerm, setSearchTerm] = useState('')
   const [addAssemblyOpen, setAddAssemblyOpen] = useState(false)
   const filteredCellPcb = cellPcbAssemblyData.filter(d =>
@@ -3154,15 +3157,22 @@ function AssemblyPage() {
   const filteredSemiShell = semiShellAssemblyData.filter(d =>
     d.id.includes(searchTerm) || d.cellSn.includes(searchTerm) || d.pcbSn.includes(searchTerm) || d.shellSn.includes(searchTerm) || d.operator.includes(searchTerm)
   )
+  const failedCellPcb = cellPcbAssemblyData.filter(d => d.status === '组装失败')
+  const failedSemiShell = semiShellAssemblyData.filter(d => d.status === '组装失败')
+  const allFailedData = [...failedCellPcb.map(d => ({ ...d, shellSn: '' as string, type: '电芯与电路板' as const })), ...failedSemiShell.map(d => ({ ...d, type: '半成品与外壳' as const }))]
+  const filteredFailed = allFailedData.filter(d =>
+    d.id.includes(searchTerm) || d.cellSn.includes(searchTerm) || d.pcbSn.includes(searchTerm) || d.operator.includes(searchTerm) || d.type.includes(searchTerm)
+  )
   return (
     <div className="space-y-5">
       {/* 统计卡片 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: '电芯PCB组装', value: cellPcbAssemblyData.length, unit: '条', color: '#0891b2', bg: 'bg-cyan-50', icon: Wrench },
           { label: '半成品外壳组装', value: semiShellAssemblyData.length, unit: '条', color: '#7c3aed', bg: 'bg-violet-50', icon: Layers },
           { label: '已完成', value: cellPcbAssemblyData.filter(d => d.status === '已组装').length + semiShellAssemblyData.filter(d => d.status === '已组装').length, unit: '条', color: '#059669', bg: 'bg-emerald-50', icon: CheckCircle2 },
           { label: '待组装', value: cellPcbAssemblyData.filter(d => d.status === '待组装').length + semiShellAssemblyData.filter(d => d.status === '待组装').length, unit: '条', color: '#d97706', bg: 'bg-amber-50', icon: Clock },
+          { label: '组装失败', value: failedCellPcb.length + failedSemiShell.length, unit: '条', color: '#e11d48', bg: 'bg-rose-50', icon: XCircle },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
             className="dash-card p-4 flex items-center gap-4">
@@ -3194,6 +3204,11 @@ function AssemblyPage() {
               className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'semiShell' ? 'bg-white text-cyan-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
               半成品与外壳组装
             </button>
+            <button onClick={() => { setActiveTab('failed'); setSearchTerm('') }}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'failed' ? 'bg-white text-rose-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              组装失败
+              {(failedCellPcb.length + failedSemiShell.length) > 0 && <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-rose-500 text-white">{failedCellPcb.length + failedSemiShell.length}</span>}
+            </button>
           </div>
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -3213,7 +3228,7 @@ function AssemblyPage() {
                     <td className="font-mono text-xs text-slate-600">{r.pcbSn}</td>
                     <td className="text-slate-500 text-xs whitespace-nowrap">{r.time || '-'}</td>
                     <td className="text-slate-600">{r.operator || '-'}</td>
-                    <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === '已组装' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{r.status}</span></td>
+                    <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === '已组装' ? 'bg-emerald-50 text-emerald-600' : r.status === '组装失败' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>{r.status}</span></td>
                     <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.testStatus === '已测试' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>{r.testStatus}</span></td>
                     <td>{r.testResult ? <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.testResult === '合格' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{r.testResult}</span> : <span className="text-xs text-slate-300">-</span>}</td>
                   </tr>
@@ -3221,7 +3236,7 @@ function AssemblyPage() {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : activeTab === 'semiShell' ? (
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="data-table">
               <thead><tr><th>组装编号</th><th>电芯SN码</th><th>PCB SN码</th><th>外壳SN码</th><th>组装时间</th><th>操作员</th><th>状态</th><th>测试状态</th><th>测试结果</th></tr></thead>
@@ -3234,11 +3249,38 @@ function AssemblyPage() {
                     <td className="text-slate-700 font-medium">{r.shellSn}</td>
                     <td className="text-slate-500 text-xs whitespace-nowrap">{r.time || '-'}</td>
                     <td className="text-slate-600">{r.operator || '-'}</td>
-                    <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === '已组装' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{r.status}</span></td>
+                    <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === '已组装' ? 'bg-emerald-50 text-emerald-600' : r.status === '组装失败' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>{r.status}</span></td>
                     <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.testStatus === '已测试' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>{r.testStatus}</span></td>
                     <td>{r.testResult ? <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.testResult === '合格' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{r.testResult}</span> : <span className="text-xs text-slate-300">-</span>}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-rose-200">
+            <table className="data-table">
+              <thead><tr className="bg-rose-50/50"><th>组装编号</th><th>组装类型</th><th>电芯SN码</th><th>PCB SN码</th><th>外壳SN码</th><th>组装时间</th><th>操作员</th><th>状态</th></tr></thead>
+              <tbody>
+                {filteredFailed.length > 0 ? filteredFailed.map((r, i) => (
+                  <tr key={i} className="hover:bg-rose-50/30">
+                    <td className="font-mono text-xs text-rose-600 font-semibold">{r.id}</td>
+                    <td><span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${r.type === '电芯与电路板' ? 'bg-cyan-50 text-cyan-600' : 'bg-violet-50 text-violet-600'}`}>{r.type}</span></td>
+                    <td className="font-mono text-xs text-slate-600">{r.cellSn}</td>
+                    <td className="font-mono text-xs text-slate-600">{r.pcbSn}</td>
+                    <td className="text-slate-700 font-medium">{r.type === '半成品与外壳' ? r.shellSn : '-'}</td>
+                    <td className="text-slate-500 text-xs whitespace-nowrap">{r.time || '-'}</td>
+                    <td className="text-slate-600">{r.operator || '-'}</td>
+                    <td><span className="text-xs px-2 py-0.5 rounded-full font-medium bg-rose-50 text-rose-600">组装失败</span></td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={8} className="text-center py-12 text-slate-400">
+                    <div className="flex flex-col items-center gap-2">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-300" />
+                      <span className="text-sm">暂无组装失败记录</span>
+                    </div>
+                  </td></tr>
+                )}
               </tbody>
             </table>
           </div>

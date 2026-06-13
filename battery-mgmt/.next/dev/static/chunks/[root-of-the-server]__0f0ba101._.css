@@ -1051,6 +1051,10 @@
     margin-left: calc(var(--spacing) * 1);
   }
 
+  .ml-1\.5 {
+    margin-left: calc(var(--spacing) * 1.5);
+  }
+
   .ml-2 {
     margin-left: calc(var(--spacing) * 2);
   }
@@ -2501,6 +2505,16 @@
     background-color: var(--color-rose-50);
   }
 
+  .bg-rose-50\/50 {
+    background-color: #fff1f280;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-rose-50\/50 {
+      background-color: color-mix(in oklab, var(--color-rose-50) 50%, transparent);
+    }
+  }
+
   .bg-rose-50\/80 {
     background-color: #fff1f2cc;
   }
@@ -3303,6 +3317,10 @@
 
   .text-emerald-100 {
     color: var(--color-emerald-100);
+  }
+
+  .text-emerald-300 {
+    color: var(--color-emerald-300);
   }
 
   .text-emerald-500 {
@@ -4426,6 +4444,18 @@
   @media (hover: hover) {
     .hover\:bg-rose-50:hover {
       background-color: var(--color-rose-50);
+    }
+  }
+
+  @media (hover: hover) {
+    .hover\:bg-rose-50\/30:hover {
+      background-color: #fff1f24d;
+    }
+
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-rose-50\/30:hover {
+        background-color: color-mix(in oklab, var(--color-rose-50) 30%, transparent);
+      }
     }
   }
 
@@ -5932,6 +5962,12 @@
   @media (min-width: 48rem) {
     .md\:grid-cols-4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .md\:grid-cols-5 {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
   }
 
