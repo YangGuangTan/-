@@ -223,12 +223,12 @@ const cellPackTestingData = [
 
 /* 电芯派克 - 已完成数据 */
 const cellPackCompletedData = [
-  { sn: 'CP-20260510-011', voltage: 3.82, temperature: 30.2, result: 'pass', duration: '25:18', testTime: '2026-05-10 09:15', brand: '亿纬锂能', model: '1260110', type: '软包', productModel: 'PB-10000mAh-A', workOrder: 'WO-2026-0501' },
-  { sn: 'CP-20260510-012', voltage: 3.45, temperature: 42.8, result: 'fail', duration: '18:33', testTime: '2026-05-10 09:42', brand: '赣锋锂业', model: '126280', type: '软包', productModel: 'PB-10000mAh-A', workOrder: 'WO-2026-0501' },
-  { sn: 'CP-20260510-013', voltage: 3.80, temperature: 29.5, result: 'pass', duration: '24:05', testTime: '2026-05-10 10:08', brand: '沃能锂能', model: '115792', type: '软包', productModel: 'PB-20000mAh-B', workOrder: 'WO-2026-0502' },
-  { sn: 'CP-20260510-014', voltage: 3.78, temperature: 31.0, result: 'pass', duration: '22:47', testTime: '2026-05-10 10:35', brand: '鹏辉锂能', model: '1260110', type: '软包', productModel: 'PB-20000mAh-B', workOrder: 'WO-2026-0502' },
-  { sn: 'CP-20260510-015', voltage: 3.50, temperature: 40.1, result: 'fail', duration: '15:22', testTime: '2026-05-10 11:00', brand: '亿纬锂能', model: '126280', type: '软包', productModel: 'PB-10000mAh-A', workOrder: 'WO-2026-0501' },
-  { sn: 'CP-20260510-016', voltage: 3.81, temperature: 28.7, result: 'pass', duration: '26:10', testTime: '2026-05-10 11:28', brand: '赣锋锂业', model: '115792', type: '软包', productModel: 'PB-20000mAh-B', workOrder: 'WO-2026-0502' },
+  { sn: 'CP-20260510-011', voltage: 3.82, temperature: 30.2, result: 'pass', duration: '25:18', testTime: '2026-05-10 09:15', brand: '亿纬锂能', model: '1260110', type: '软包', productModel: 'PB-10000mAh-A', workOrder: 'WO-2026-0501', detail1: { ocv1: '3792.6', ocr1: '26.84', oct1: '2026-02-02 00:47:38' }, detail2: { ocv2: '3755.5', ocr2: '27.77', oct2: '2026-02-27 19:46:13' }, kCalc: { delta12: '37.1', deltaT12: '618.98', k12: '0.0599' } },
+  { sn: 'CP-20260510-012', voltage: 3.45, temperature: 42.8, result: 'fail', duration: '18:33', testTime: '2026-05-10 09:42', brand: '赣锋锂业', model: '126280', type: '软包', productModel: 'PB-10000mAh-A', workOrder: 'WO-2026-0501', detail1: { ocv1: '3650.2', ocr1: '35.16', oct1: '2026-02-03 01:12:05' }, detail2: { ocv2: '3580.8', ocr2: '36.42', oct2: '2026-02-27 20:30:18' }, kCalc: { delta12: '69.4', deltaT12: '595.30', k12: '0.1166' } },
+  { sn: 'CP-20260510-013', voltage: 3.80, temperature: 29.5, result: 'pass', duration: '24:05', testTime: '2026-05-10 10:08', brand: '沃能锂能', model: '115792', type: '软包', productModel: 'PB-20000mAh-B', workOrder: 'WO-2026-0502', detail1: { ocv1: '3810.5', ocr1: '22.10', oct1: '2026-02-01 22:30:15' }, detail2: { ocv2: '3780.3', ocr2: '23.05', oct2: '2026-02-26 18:15:42' }, kCalc: { delta12: '30.2', deltaT12: '595.75', k12: '0.0507' } },
+  { sn: 'CP-20260510-014', voltage: 3.78, temperature: 31.0, result: 'pass', duration: '22:47', testTime: '2026-05-10 10:35', brand: '鹏辉锂能', model: '1260110', type: '软包', productModel: 'PB-20000mAh-B', workOrder: 'WO-2026-0502', detail1: { ocv1: '3845.8', ocr1: '18.65', oct1: '2026-02-04 08:20:30' }, detail2: { ocv2: '3812.4', ocr2: '19.33', oct2: '2026-02-28 10:45:12' }, kCalc: { delta12: '33.4', deltaT12: '578.42', k12: '0.0577' } },
+  { sn: 'CP-20260510-015', voltage: 3.50, temperature: 40.1, result: 'fail', duration: '15:22', testTime: '2026-05-10 11:00', brand: '亿纬锂能', model: '126280', type: '软包', productModel: 'PB-10000mAh-A', workOrder: 'WO-2026-0501', detail1: { ocv1: '3620.1', ocr1: '32.50', oct1: '2026-02-05 14:10:22' }, detail2: { ocv2: '3548.7', ocr2: '34.12', oct2: '2026-02-27 22:55:08' }, kCalc: { delta12: '71.4', deltaT12: '536.75', k12: '0.1330' } },
+  { sn: 'CP-20260510-016', voltage: 3.81, temperature: 28.7, result: 'pass', duration: '26:10', testTime: '2026-05-10 11:28', brand: '赣锋锂业', model: '115792', type: '软包', productModel: 'PB-20000mAh-B', workOrder: 'WO-2026-0502', detail1: { ocv1: '3802.3', ocr1: '20.45', oct1: '2026-02-06 16:40:50' }, detail2: { ocv2: '3775.1', ocr2: '21.18', oct2: '2026-02-28 14:22:36' }, kCalc: { delta12: '27.2', deltaT12: '529.70', k12: '0.0513' } },
 ]
 
 /* 半成品 - 正在测试数据 */
@@ -1788,7 +1788,7 @@ function CellPackTestPage() {
       </SectionCard>
       {/* 测试报告弹窗 */}
       <Dialog open={testReportOpen} onOpenChange={setTestReportOpen}>
-        <DialogContent className="sm:max-w-[600px] bg-white">
+        <DialogContent className="sm:max-w-[680px] bg-white max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-slate-800">
               <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
@@ -1816,6 +1816,67 @@ function CellPackTestPage() {
                   <div className="flex items-center gap-2"><span className="text-slate-500 w-16">测试结果:</span><span className={selectedRecord.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.result === 'pass' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{selectedRecord.result === 'pass' ? '合格' : '不合格'}</span></div>
                 </div>
               </div>
+
+              {/* 测试项明细一 */}
+              <div className="bg-white rounded-lg p-4 border border-slate-200">
+                <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-emerald-500" />测试项明细一</h4>
+                <div className="overflow-hidden rounded-lg border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50">
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">测试项目</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">测试值</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <tr className="hover:bg-slate-50/50"><td className="px-4 py-2.5 text-slate-700 font-medium">OCV1</td><td className="px-4 py-2.5 text-right text-slate-700 font-mono">{selectedRecord.detail1.ocv1}</td></tr>
+                      <tr className="hover:bg-slate-50/50"><td className="px-4 py-2.5 text-slate-700 font-medium">OCR1(mΩ)</td><td className="px-4 py-2.5 text-right text-slate-700 font-mono">{selectedRecord.detail1.ocr1}</td></tr>
+                      <tr className="hover:bg-slate-50/50"><td className="px-4 py-2.5 text-slate-700 font-medium">OCT1</td><td className="px-4 py-2.5 text-right text-slate-700 font-mono text-xs">{selectedRecord.detail1.oct1}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 测试项明细二 */}
+              <div className="bg-white rounded-lg p-4 border border-slate-200">
+                <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-emerald-500" />测试项明细二</h4>
+                <div className="overflow-hidden rounded-lg border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50">
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">测试项目</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">测试值</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <tr className="hover:bg-slate-50/50"><td className="px-4 py-2.5 text-slate-700 font-medium">OCV2</td><td className="px-4 py-2.5 text-right text-slate-700 font-mono">{selectedRecord.detail2.ocv2}</td></tr>
+                      <tr className="hover:bg-slate-50/50"><td className="px-4 py-2.5 text-slate-700 font-medium">OCR2(mΩ)</td><td className="px-4 py-2.5 text-right text-slate-700 font-mono">{selectedRecord.detail2.ocr2}</td></tr>
+                      <tr className="hover:bg-slate-50/50"><td className="px-4 py-2.5 text-slate-700 font-medium">OCT2</td><td className="px-4 py-2.5 text-right text-slate-700 font-mono text-xs">{selectedRecord.detail2.oct2}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* K值计算 */}
+              <div className="bg-white rounded-lg p-4 border border-slate-200">
+                <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-emerald-500" />K值计算</h4>
+                <div className="overflow-hidden rounded-lg border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50">
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500">参数</th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-500">计算值</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <tr className="hover:bg-slate-50/50"><td className="px-4 py-2.5 text-slate-700 font-medium">Δ12 (mV)</td><td className="px-4 py-2.5 text-right text-slate-700 font-mono">{selectedRecord.kCalc.delta12}</td></tr>
+                      <tr className="hover:bg-slate-50/50"><td className="px-4 py-2.5 text-slate-700 font-medium">ΔT12 (h)</td><td className="px-4 py-2.5 text-right text-slate-700 font-mono">{selectedRecord.kCalc.deltaT12}</td></tr>
+                      <tr className="hover:bg-slate-50/50"><td className="px-4 py-2.5 text-slate-700 font-medium">K12 (mV/h)</td><td className="px-4 py-2.5 text-right font-mono"><span className={`px-2 py-0.5 rounded text-xs font-bold ${parseFloat(selectedRecord.kCalc.k12) <= 0.08 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>{selectedRecord.kCalc.k12}</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               <div className={`rounded-lg p-4 border ${selectedRecord.result === 'pass' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
                 <div className="flex items-center gap-3">
                   {selectedRecord.result === 'pass' ? <CheckCircle2 className="w-6 h-6 text-emerald-600" /> : <XCircle className="w-6 h-6 text-rose-600" />}
