@@ -312,19 +312,19 @@ const packagingRecords = [
 
 /* 成品组装 - 电芯与电路板组装数据 */
 const cellPcbAssemblyData = [
-  { id: 'ASM-CP-001', cellSn: 'CELL-20260510-001', pcbSn: 'PCB-20260510-001', time: '2026-05-10 08:30', operator: '张三', status: '已组装' },
-  { id: 'ASM-CP-002', cellSn: 'CELL-20260510-002', pcbSn: 'PCB-20260510-002', time: '2026-05-10 08:45', operator: '李四', status: '已组装' },
-  { id: 'ASM-CP-003', cellSn: 'CELL-20260511-003', pcbSn: 'PCB-20260511-003', time: '2026-05-11 09:10', operator: '张三', status: '已组装' },
-  { id: 'ASM-CP-004', cellSn: 'CELL-20260511-004', pcbSn: 'PCB-20260511-004', time: '', operator: '', status: '待组装' },
-  { id: 'ASM-CP-005', cellSn: 'CELL-20260511-005', pcbSn: 'PCB-20260511-005', time: '', operator: '', status: '待组装' },
+  { id: 'ASM-CP-001', cellSn: 'CELL-20260510-001', pcbSn: 'PCB-20260510-001', time: '2026-05-10 08:30', operator: '张三', status: '已组装', testStatus: '已测试', testResult: '合格' },
+  { id: 'ASM-CP-002', cellSn: 'CELL-20260510-002', pcbSn: 'PCB-20260510-002', time: '2026-05-10 08:45', operator: '李四', status: '已组装', testStatus: '已测试', testResult: '合格' },
+  { id: 'ASM-CP-003', cellSn: 'CELL-20260511-003', pcbSn: 'PCB-20260511-003', time: '2026-05-11 09:10', operator: '张三', status: '已组装', testStatus: '已测试', testResult: '不合格' },
+  { id: 'ASM-CP-004', cellSn: 'CELL-20260511-004', pcbSn: 'PCB-20260511-004', time: '', operator: '', status: '待组装', testStatus: '未测试', testResult: '' },
+  { id: 'ASM-CP-005', cellSn: 'CELL-20260511-005', pcbSn: 'PCB-20260511-005', time: '', operator: '', status: '待组装', testStatus: '未测试', testResult: '' },
 ]
 
 /* 成品组装 - 半成品与外壳组装数据 */
 const semiShellAssemblyData = [
-  { id: 'ASM-SS-001', cellSn: 'ASM-CP-001', pcbSn: 'SHELL-20260510-001', shellSn: 'PB-10000mAh-A', time: '2026-05-10 09:30', operator: '张三', status: '已组装' },
-  { id: 'ASM-SS-002', cellSn: 'ASM-CP-002', pcbSn: 'SHELL-20260510-002', shellSn: 'PB-10000mAh-A', time: '2026-05-10 09:50', operator: '王五', status: '已组装' },
-  { id: 'ASM-SS-003', cellSn: 'ASM-CP-003', pcbSn: 'SHELL-20260511-003', shellSn: 'PB-20000mAh-B', time: '2026-05-11 10:15', operator: '李四', status: '已组装' },
-  { id: 'ASM-SS-004', cellSn: 'ASM-CP-004', pcbSn: 'SHELL-20260511-004', shellSn: 'PB-20000mAh-B', time: '', operator: '', status: '待组装' },
+  { id: 'ASM-SS-001', cellSn: 'ASM-CP-001', pcbSn: 'SHELL-20260510-001', shellSn: 'PB-10000mAh-A', time: '2026-05-10 09:30', operator: '张三', status: '已组装', testStatus: '已测试', testResult: '合格' },
+  { id: 'ASM-SS-002', cellSn: 'ASM-CP-002', pcbSn: 'SHELL-20260510-002', shellSn: 'PB-10000mAh-A', time: '2026-05-10 09:50', operator: '王五', status: '已组装', testStatus: '已测试', testResult: '合格' },
+  { id: 'ASM-SS-003', cellSn: 'ASM-CP-003', pcbSn: 'SHELL-20260511-003', shellSn: 'PB-20000mAh-B', time: '2026-05-11 10:15', operator: '李四', status: '已组装', testStatus: '已测试', testResult: '不合格' },
+  { id: 'ASM-SS-004', cellSn: 'ASM-CP-004', pcbSn: 'SHELL-20260511-004', shellSn: 'PB-20000mAh-B', time: '', operator: '', status: '待组装', testStatus: '未测试', testResult: '' },
 ]
 
 /* 生产工单数据 */
@@ -3204,7 +3204,7 @@ function AssemblyPage() {
         {activeTab === 'cellPcb' ? (
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="data-table">
-              <thead><tr><th>组装编号</th><th>电芯SN码</th><th>PCB SN码</th><th>组装时间</th><th>操作员</th><th>状态</th></tr></thead>
+              <thead><tr><th>组装编号</th><th>电芯SN码</th><th>PCB SN码</th><th>组装时间</th><th>操作员</th><th>状态</th><th>测试状态</th><th>测试结果</th></tr></thead>
               <tbody>
                 {filteredCellPcb.map((r, i) => (
                   <tr key={i}>
@@ -3214,6 +3214,8 @@ function AssemblyPage() {
                     <td className="text-slate-500 text-xs whitespace-nowrap">{r.time || '-'}</td>
                     <td className="text-slate-600">{r.operator || '-'}</td>
                     <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === '已组装' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{r.status}</span></td>
+                    <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.testStatus === '已测试' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>{r.testStatus}</span></td>
+                    <td>{r.testResult ? <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.testResult === '合格' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{r.testResult}</span> : <span className="text-xs text-slate-300">-</span>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -3222,7 +3224,7 @@ function AssemblyPage() {
         ) : (
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="data-table">
-              <thead><tr><th>组装编号</th><th>电芯SN码</th><th>PCB SN码</th><th>外壳SN码</th><th>组装时间</th><th>操作员</th><th>状态</th></tr></thead>
+              <thead><tr><th>组装编号</th><th>电芯SN码</th><th>PCB SN码</th><th>外壳SN码</th><th>组装时间</th><th>操作员</th><th>状态</th><th>测试状态</th><th>测试结果</th></tr></thead>
               <tbody>
                 {filteredSemiShell.map((r, i) => (
                   <tr key={i}>
@@ -3233,6 +3235,8 @@ function AssemblyPage() {
                     <td className="text-slate-500 text-xs whitespace-nowrap">{r.time || '-'}</td>
                     <td className="text-slate-600">{r.operator || '-'}</td>
                     <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === '已组装' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{r.status}</span></td>
+                    <td><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.testStatus === '已测试' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>{r.testStatus}</span></td>
+                    <td>{r.testResult ? <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.testResult === '合格' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{r.testResult}</span> : <span className="text-xs text-slate-300">-</span>}</td>
                   </tr>
                 ))}
               </tbody>
