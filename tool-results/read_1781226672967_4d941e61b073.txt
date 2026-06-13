@@ -1,0 +1,2002 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useRef, useCallback } from 'react'
+     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→import {
+     6→  AreaChart, Area, BarChart, Bar,
+     7→  PieChart, Pie, Cell, RadarChart, Radar, PolarGrid,
+     8→  PolarAngleAxis, PolarRadiusAxis, RadialBarChart, RadialBar,
+     9→  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+    10→  ResponsiveContainer, ComposedChart, Line,
+    11→  TooltipProps
+    12→} from 'recharts'
+    13→import {
+    14→  Cpu, CheckCircle2, AlertTriangle, Package,
+    15→  Box, TestTube2, TrendingUp, Activity,
+    16→  Zap, Shield, BarChart3, Target,
+    17→  ArrowUpRight, ArrowDownRight, Clock, Database,
+    18→  Factory, Wrench, Layers, AlertCircle, Siren,
+    19→  Badge, Search, Plus, FileText, Upload,
+    20→  LayoutDashboard, ClipboardList, FlaskConical, BarChart2,
+    21→  Truck, ChevronRight, XCircle, CheckCircle, Save, X,
+    22→  BatteryCharging, Thermometer, Users, UserX, Trash2,
+    23→  History, UserPlus, Wifi, WifiOff, Timer, Printer, QrCode, ScanBarcode, FileUp, FileSpreadsheet,
+    24→  ClipboardCheck, PackageCheck, Fingerprint, Cog, Grid3X3, Eye, Settings, Pencil, ChevronDown, Lock, LogOut,
+    25→  BookOpen, Download, FolderPlus, File, MoreVertical, FolderOpen
+    26→} from 'lucide-react'
+    27→import {
+    28→  Dialog, DialogContent, DialogHeader, DialogTitle,
+    29→  DialogDescription, DialogFooter, DialogClose
+    30→} from '@/components/ui/dialog'
+    31→
+    32→/* ================================================================
+    33→   数据定义
+    34→   ================================================================ */
+    35→
+    36→const timeOptions = [
+    37→  { key: 'today', label: '今日' },
+    38→  { key: 'yesterday', label: '昨日' },
+    39→  { key: 'thisWeek', label: '本周' },
+    40→  { key: 'lastWeek', label: '上周' },
+    41→  { key: 'thisMonth', label: '本月' },
+    42→  { key: 'lastMonth', label: '上月' },
+    43→  { key: 'thisYear', label: '今年' },
+    44→  { key: 'lastYear', label: '去年' },
+    45→]
+    46→
+    47→const navItems = [
+    48→  { key: 'dashboard', label: '数据看板', icon: LayoutDashboard },
+    49→  { key: 'material', label: '物料台账', icon: ClipboardList },
+    50→  { key: 'workOrder', label: '生产工单', icon: ClipboardCheck },
+    51→  { key: 'labelPrint', label: '标签打印', icon: Printer },
+    52→  { key: 'semiTest', label: 'PCB测试', icon: FlaskConical },
+    53→  { key: 'cellPackTest', label: '电芯派克', icon: BatteryCharging },
+    54→  { key: 'assembly', label: '成品组装', icon: Wrench },
+    55→  { key: 'newSemiTest', label: '半成品测试', icon: TestTube2 },
+    56→  { key: 'productTest', label: '成品测试', icon: BarChart2 },
+    57→  { key: 'agingTest', label: '老化测试', icon: Thermometer },
+    58→  { key: 'packaging', label: '设备装箱', icon: Truck },
+    59→  { key: 'documentLibrary', label: '资料库', icon: BookOpen },
+    60→  { key: 'personnel', label: '人员管理', icon: Users },
+    61→]
+    62→
+    63→/* 工段与菜单项的映射关系 - 登录后根据选择的工段过滤侧边栏菜单 */
+    64→const SECTION_NAV_MAP: Record<string, string[]> = {
+    65→  'PCB测试': ['semiTest', 'workOrder', 'documentLibrary'],
+    66→  '半成品测试': ['newSemiTest', 'workOrder', 'documentLibrary'],
+    67→  '成品测试': ['productTest', 'workOrder', 'documentLibrary'],
+    68→  '物料管理': ['material', 'workOrder', 'documentLibrary'],
+    69→  '老化测试': ['agingTest', 'workOrder', 'documentLibrary'],
+    70→  '设备装箱': ['packaging', 'workOrder', 'documentLibrary'],
+    71→  '电芯派克': ['cellPackTest', 'workOrder', 'documentLibrary'],
+    72→  '系统管理': ['dashboard', 'personnel', 'workOrder', 'documentLibrary'],
+    73→}
+    74→
+    75→/* 工段选项列表 */
+    76→const LOGIN_SECTION_OPTIONS = ['PCB测试', '半成品测试', '成品测试', '物料管理', '老化测试', '设备装箱', '电芯派克', '系统管理']
+    77→
+    78→/* 模拟用户数据 */
+    79→const LOGIN_USERS = [
+    80→  { account: 'admin', password: 'admin123', name: '总管理员', role: '总管理员', sections: ['系统管理', 'PCB测试', '半成品测试', '成品测试', '物料管理', '老化测试', '设备装箱', '电芯派克'], isSuperAdmin: true },
+    81→  { account: 'zhangsan', password: '123456', name: '张三', role: '生产管理员', sections: ['系统管理', 'PCB测试', '成品测试', '物料管理', '老化测试', '设备装箱', '电芯派克', '半成品测试'] },
+    82→  { account: 'lisi', password: '123456', name: '李四', role: '操作员', sections: ['PCB测试', '半成品测试'] },
+    83→  { account: 'wangwu', password: '123456', name: '王五', role: '操作员', sections: ['成品测试'] },
+    84→  { account: 'zhaoliu', password: '123456', name: '赵六', role: '查看者', sections: ['物料管理', '半成品测试'] },
+    85→  { account: 'qianqi', password: '123456', name: '钱七', role: '操作员', sections: ['老化测试'] },
+    86→  { account: 'sunba', password: '123456', name: '孙八', role: '查看者', sections: ['设备装箱'] },
+    87→  { account: 'zhoujiu', password: '123456', name: '周九', role: '管理员', sections: ['系统管理', '物料管理'] },
+    88→  { account: 'wushi', password: '123456', name: '吴十', role: '操作员', sections: ['电芯派克', '老化测试'] },
+    89→]
+    90→
+    91→interface KPICard {
+    92→  title: string; value: number; unit: string; trend?: string; trendType?: 'up' | 'down' | 'neutral'
+    93→  target?: number; status?: 'pass' | 'fail' | 'normal'; icon: React.ComponentType<{ className?: string }>
+    94→  color: string; shadowCls: string; decimals?: number; category: string
+    95→}
+    96→
+    97→const kpiData: KPICard[] = [
+    98→  { title: '机柜产出', value: 2845, unit: '台', trend: '+5.2%', trendType: 'up', icon: Cpu, color: '#0891b2', shadowCls: 'shadow-cyan', category: '机柜' },
+    99→  { title: '机柜合格率', value: 98, unit: '%', target: 98, status: 'pass', icon: CheckCircle2, color: '#059669', shadowCls: 'shadow-green', category: '机柜' },
+   100→  { title: '单宝产出', value: 2845, unit: '个', trend: '+5.2%', trendType: 'up', icon: Zap, color: '#7c3aed', shadowCls: 'shadow-purple', category: '单宝' },
+   101→  { title: '单宝合格率', value: 98, unit: '%', target: 98, status: 'pass', icon: Shield, color: '#059669', shadowCls: 'shadow-green', category: '单宝' },
+   102→  { title: '物料到货批次', value: 96, unit: '批', icon: Package, color: '#d97706', shadowCls: 'shadow-amber', category: '物料' },
+   103→  { title: '物料合格率', value: 96.2, unit: '%', trend: '-0.3%', trendType: 'down', icon: Target, color: '#e11d48', shadowCls: 'shadow-rose', decimals: 1, category: '物料' },
+   104→  { title: '半成品测试', value: 1000, unit: '台', trend: '+5.2%', trendType: 'up', icon: TestTube2, color: '#0891b2', shadowCls: 'shadow-cyan', category: '半成品' },
+   105→  { title: '半成品通过率', value: 98, unit: '%', target: 98, status: 'pass', icon: CheckCircle2, color: '#059669', shadowCls: 'shadow-green', category: '半成品' },
+   106→  { title: '成品测试', value: 1000, unit: '台', trend: '+5.2%', trendType: 'up', icon: Activity, color: '#7c3aed', shadowCls: 'shadow-purple', category: '成品' },
+   107→  { title: '成品通过率', value: 98, unit: '%', target: 98, status: 'pass', icon: CheckCircle2, color: '#059669', shadowCls: 'shadow-green', category: '成品' },
+   108→  { title: '已装总箱数', value: 15600, unit: '箱', icon: Box, color: '#d97706', shadowCls: 'shadow-amber', category: '装箱' },
+   109→  { title: '已装总单宝数', value: 15600, unit: '个', icon: Database, color: '#0891b2', shadowCls: 'shadow-cyan', category: '装箱' },
+   110→]
+   111→
+   112→const anomalyItems = [
+   113→  { label: '机柜异常率', value: 2, unit: '%', level: 'warning' as const },
+   114→  { label: '单宝异常率', value: 2, unit: '%', level: 'warning' as const },
+   115→  { label: '物料异常率', value: 3.8, unit: '%', level: 'danger' as const },
+   116→  { label: '半成品异常率', value: 2, unit: '%', level: 'warning' as const },
+   117→  { label: '成品异常率', value: 2, unit: '%', level: 'warning' as const },
+   118→]
+   119→
+   120→const trendData = [
+   121→  { time: '08:00', semiTest: 400, finishedProduct: 350, cabinetOutput: 380 },
+   122→  { time: '10:00', semiTest: 850, finishedProduct: 800, cabinetOutput: 820 },
+   123→  { time: '12:00', semiTest: 1300, finishedProduct: 1250, cabinetOutput: 1280 },
+   124→  { time: '14:00', semiTest: 1900, finishedProduct: 1800, cabinetOutput: 1850 },
+   125→  { time: '16:00', semiTest: 2400, finishedProduct: 2350, cabinetOutput: 2380 },
+   126→  { time: '18:00', semiTest: 2900, finishedProduct: 2845, cabinetOutput: 2845 },
+   127→]
+   128→const testingPieData = [
+   129→  { name: '准许入库', value: 2845, color: '#059669' },
+   130→  { name: '异常隔离', value: 41, color: '#e11d48' },
+   131→]
+   132→const supplierData = [
+   133→  { name: '宁德新能源', rate: 99.8, fill: '#059669' },
+   134→  { name: '立讯精密', rate: 99.5, fill: '#0891b2' },
+   135→  { name: '外壳厂商', rate: 98.2, fill: '#7c3aed' },
+   136→  { name: '线材辅料', rate: 85.5, fill: '#e11d48' },
+   137→]
+   138→const defectData = [
+   139→  { name: '过放测试', count: 18, fill: '#e11d48' },
+   140→  { name: '内阻超标', count: 12, fill: '#d97706' },
+   141→  { name: '自耗电异常', count: 6, fill: '#7c3aed' },
+   142→  { name: '温度异常', count: 3, fill: '#0891b2' },
+   143→  { name: '短路', count: 2, fill: '#059669' },
+   144→]
+   145→const materialPieData = [
+   146→  { name: '电芯(合格)', value: 5000, color: '#059669' },
+   147→  { name: '保护板(合格)', value: 2000, color: '#0891b2' },
+   148→  { name: 'PCB(合格)', value: 2000, color: '#7c3aed' },
+   149→  { name: '外壳(合格)', value: 2000, color: '#d97706' },
+   150→  { name: '线材(不合格)', value: 2000, color: '#e11d48' },
+   151→  { name: '辅料(不合格)', value: 2000, color: '#dc2626' },
+   152→]
+   153→const radarData = [
+   154→  { dimension: '物料质量', value: 96.2, fullMark: 100 },
+   155→  { dimension: '半成品合格', value: 98, fullMark: 100 },
+   156→  { dimension: '成品合格', value: 98, fullMark: 100 },
+   157→  { dimension: '机柜合格', value: 98, fullMark: 100 },
+   158→  { dimension: '单宝合格', value: 98, fullMark: 100 },
+   159→  { dimension: '装箱达标', value: 100, fullMark: 100 },
+   160→]
+   161→const gaugeData = [
+   162→  { name: '物料合格', value: 96.2, fill: '#d97706' },
+   163→  { name: '半成品', value: 98, fill: '#0891b2' },
+   164→  { name: '成品', value: 98, fill: '#059669' },
+   165→  { name: '机柜', value: 98, fill: '#7c3aed' },
+   166→]
+   167→const weeklyData = [
+   168→  { day: '周一', output: 420, pass: 412, fail: 8 },
+   169→  { day: '周二', output: 450, pass: 441, fail: 9 },
+   170→  { day: '周三', output: 480, pass: 472, fail: 8 },
+   171→  { day: '周四', output: 460, pass: 450, fail: 10 },
+   172→  { day: '周五', output: 510, pass: 502, fail: 8 },
+   173→  { day: '周六', output: 380, pass: 373, fail: 7 },
+   174→  { day: '周日', output: 145, pass: 142, fail: 3 },
+   175→]
+   176→const packagingData = [
+   177→  { name: '已装箱', value: 15600, color: '#0891b2' },
+   178→  { name: '已装机柜', value: 15600, color: '#7c3aed' },
+   179→  { name: '已装单宝', value: 15600, color: '#059669' },
+   180→]
+   181→
+   182→/* 物料台账数据 */
+   183→const materialData = [
+   184→  { batch: 'B20231024-CELL-01', name: '电芯', supplier: '宁德新能源', supplierId: 'SUP-ND-001', storageLocation: 'A区-01号仓', brandName: '宁德时代', spec: '10000mAh 聚合物', qty: 5000, result: '合格', status: '已测试', arrival: '2023-10-24 09:30', testDate: '2023-10-25 09:31' },
+   185→  { batch: 'B20231024-PCB-02', name: '保护板', supplier: '立讯精密', supplierId: 'SUP-LX-002', storageLocation: 'B区-03号仓', brandName: '立讯', spec: 'V2.1 主控板', qty: 2000, result: '合格', status: '已测试', arrival: '2023-10-24 11:15', testDate: '2023-10-25 09:32' },
+   186→  { batch: 'B20231024-PCB-03', name: 'PCB', supplier: '立讯精密', supplierId: 'SUP-LX-002', storageLocation: 'B区-05号仓', brandName: '立讯', spec: '0.6mm', qty: 2000, result: '合格', status: '已测试', arrival: '2023-10-24 11:15', testDate: '2023-10-25 09:33' },
+   187→  { batch: 'B20231024-PCB-04', name: '外壳', supplier: '立讯精密', supplierId: 'SUP-LX-002', storageLocation: 'C区-02号仓', brandName: '立讯', spec: '--', qty: 2000, result: '合格', status: '已测试', arrival: '2023-10-24 11:15', testDate: '2023-10-25 09:34' },
+   188→  { batch: 'B20231024-PCB-05', name: '线材', supplier: '立讯精密', supplierId: 'SUP-LX-003', storageLocation: 'D区-01号仓', brandName: '远东', spec: '--', qty: 2000, result: '不合格', status: '已测试', arrival: '2023-10-24 11:15', testDate: '2023-10-25 09:35' },
+   189→  { batch: 'B20231024-PCB-06', name: '辅料', supplier: '立讯精密', supplierId: 'SUP-LX-003', storageLocation: 'D区-04号仓', brandName: '远东', spec: '--', qty: 2000, result: '不合格', status: '已测试', arrival: '2023-10-24 11:15', testDate: '2023-10-25 09:36' },
+   190→]
+   191→
+   192→/* 半成品/成品测试数据 */
+   193→const testRecords = [
+   194→  { sn: 'SN8839201992', pcb: 'PCB-8893-X', cell: 'CELL-8893-X', operator: '工号: A012', time: '14:22:31', result: 'pass', productModel: 'PB-10000mAh-A', overcharge: '4.22V', overcurrent: '2.1A' },
+   195→  { sn: 'SN8839201993', pcb: 'PCB-8894-X', cell: 'CELL-8894-X', operator: '工号: B011', time: '14:23:05', result: 'fail', productModel: 'PB-10000mAh-A', overcharge: '4.35V', overcurrent: '3.2A' },
+   196→  { sn: 'SN8839201994', pcb: 'PCB-8895-X', cell: 'CELL-8895-X', operator: '工号: A013', time: '14:25:12', result: 'pass', productModel: 'PB-20000mAh-B', overcharge: '4.20V', overcurrent: '1.8A' },
+   197→  { sn: 'SN8839201995', pcb: 'PCB-8896-X', cell: 'CELL-8896-X', operator: '工号: C009', time: '14:28:33', result: 'pass', productModel: 'PB-20000mAh-B', overcharge: '4.23V', overcurrent: '2.0A' },
+   198→  { sn: 'SN8839201996', pcb: 'PCB-8897-X', cell: 'CELL-8897-X', operator: '工号: B012', time: '14:30:41', result: 'fail', productModel: 'PB-10000mAh-A', overcharge: '4.38V', overcurrent: '3.5A' },
+   199→  { sn: 'SN8839201997', pcb: 'PCB-8898-X', cell: 'CELL-8898-X', operator: '工号: A014', time: '14:32:55', result: 'pass', productModel: 'PB-20000mAh-B', overcharge: '4.21V', overcurrent: '1.9A' },
+   200→]
+   201→
+   202→/* 电芯派克 - 正在测试数据 */
+   203→const cellPackTestingData = [
+   204→  { sn: 'CP-20260511-001', voltage: 3.72, current: 2.15, temperature: 32.5, progress: 68, elapsed: '12:35', testItem: '充放电循环测试' },
+   205→  { sn: 'CP-20260511-002', voltage: 3.85, current: 1.80, temperature: 28.3, progress: 42, elapsed: '07:20', testItem: '容量检测' },
+   206→  { sn: 'CP-20260511-003', voltage: 3.68, current: 2.50, temperature: 35.1, progress: 85, elapsed: '18:42', testItem: '内阻测试' },
+   207→]
+   208→
+   209→/* 电芯派克 - 已完成数据 */
+   210→const cellPackCompletedData = [
+   211→  { sn: 'CP-20260510-011', voltage: 3.82, temperature: 30.2, result: 'pass', duration: '25:18', testTime: '2026-05-10 09:15', brand: '亿纬锂能', model: '1260110', type: '软包', productModel: 'PB-10000mAh-A', workOrder: 'WO-2026-0501' },
+   212→  { sn: 'CP-20260510-012', voltage: 3.45, temperature: 42.8, result: 'fail', duration: '18:33', testTime: '2026-05-10 09:42', brand: '赣锋锂业', model: '126280', type: '软包', productModel: 'PB-10000mAh-A', workOrder: 'WO-2026-0501' },
+   213→  { sn: 'CP-20260510-013', voltage: 3.80, temperature: 29.5, result: 'pass', duration: '24:05', testTime: '2026-05-10 10:08', brand: '沃能锂能', model: '115792', type: '软包', productModel: 'PB-20000mAh-B', workOrder: 'WO-2026-0502' },
+   214→  { sn: 'CP-20260510-014', voltage: 3.78, temperature: 31.0, result: 'pass', duration: '22:47', testTime: '2026-05-10 10:35', brand: '鹏辉锂能', model: '1260110', type: '软包', productModel: 'PB-20000mAh-B', workOrder: 'WO-2026-0502' },
+   215→  { sn: 'CP-20260510-015', voltage: 3.50, temperature: 40.1, result: 'fail', duration: '15:22', testTime: '2026-05-10 11:00', brand: '亿纬锂能', model: '126280', type: '软包', productModel: 'PB-10000mAh-A', workOrder: 'WO-2026-0501' },
+   216→  { sn: 'CP-20260510-016', voltage: 3.81, temperature: 28.7, result: 'pass', duration: '26:10', testTime: '2026-05-10 11:28', brand: '赣锋锂业', model: '115792', type: '软包', productModel: 'PB-20000mAh-B', workOrder: 'WO-2026-0502' },
+   217→]
+   218→
+   219→/* 半成品 - 正在测试数据 */
+   220→const semiTestingData = [
+   221→  { sn: 'SN8839201998', testItem: '过充保护测试', progress: 72, elapsed: '08:15' },
+   222→  { sn: 'SN8839201999', testItem: '内阻检测', progress: 45, elapsed: '05:30' },
+   223→]
+   224→
+   225→/* 成品 - 正在测试数据 */
+   226→const productTestingData = [
+   227→  { sn: 'SN8839202001', testItem: '满充容量测试', progress: 58, elapsed: '10:22' },
+   228→  { sn: 'SN8839202002', testItem: 'BMS通信检测', progress: 90, elapsed: '15:08' },
+   229→  { sn: 'SN8839202003', testItem: '自耗电测试', progress: 33, elapsed: '04:45' },
+   230→]
+   231→
+   232→/* 老化测试 - 正在测试数据 */
+   233→const agingTestingData = [
+   234→  { sn: 'AG-20260511-001', temperature: 55.2, voltage: 3.72, loss: 2.3, qualified: true, progress: 65, elapsed: '32:15', workOrder: 'WO-2026-0501', rackId: 'RACK-A01' },
+   235→  { sn: 'AG-20260511-002', temperature: 62.8, voltage: 3.45, loss: 5.8, qualified: false, progress: 48, elapsed: '24:30', workOrder: 'WO-2026-0501', rackId: 'RACK-A01' },
+   236→  { sn: 'AG-20260511-003', temperature: 53.1, voltage: 3.78, loss: 1.8, qualified: true, progress: 82, elapsed: '40:05', workOrder: 'WO-2026-0502', rackId: 'RACK-A02' },
+   237→]
+   238→
+   239→/* 老化测试 - 已完成数据 */
+   240→const agingCompletedData = [
+   241→  { sn: 'AG-20260510-011', temperature: 54.3, voltage: 3.75, loss: 2.1, result: '合格', duration: '48:30', testTime: '2026-05-10 08:15', charge: '3.85V', discharge: '3.20V', workOrder: 'WO-2026-0501', rackId: 'RACK-A01' },
+   242→  { sn: 'AG-20260510-012', temperature: 68.5, voltage: 3.32, loss: 7.2, result: '不合格', duration: '35:18', testTime: '2026-05-10 09:05', charge: '3.85V', discharge: '3.20V', workOrder: 'WO-2026-0501', rackId: 'RACK-A01' },
+   243→  { sn: 'AG-20260510-013', temperature: 52.8, voltage: 3.80, loss: 1.5, result: '合格', duration: '50:22', testTime: '2026-05-10 09:58', charge: '3.82V', discharge: '3.15V', workOrder: 'WO-2026-0502', rackId: 'RACK-A02' },
+   244→  { sn: 'AG-20260510-014', temperature: 55.1, voltage: 3.70, loss: 2.8, result: '合格', duration: '46:15', testTime: '2026-05-10 10:48', charge: '3.82V', discharge: '3.15V', workOrder: 'WO-2026-0502', rackId: 'RACK-A02' },
+   245→  { sn: 'AG-20260510-015', temperature: 70.2, voltage: 3.28, loss: 8.5, result: '不合格', duration: '30:42', testTime: '2026-05-10 11:35', charge: '3.95V', discharge: '2.60V', workOrder: 'WO-2026-0501', rackId: 'RACK-B01' },
+   246→  { sn: 'AG-20260510-016', temperature: 53.5, voltage: 3.76, loss: 1.9, result: '合格', duration: '49:08', testTime: '2026-05-10 12:25', charge: '3.83V', discharge: '3.18V', workOrder: 'WO-2026-0502', rackId: 'RACK-B01' },
+   247→]
+   248→
+   249→/* 人员管理数据 */
+   250→const personnelData = [
+   251→  { id: 1, name: '张三', account: 'zhangsan', role: 'admin', phone: '138****1001', status: '正常', section: ['系统管理'] },
+   252→  { id: 2, name: '李四', account: 'lisi', role: 'operator', phone: '139****2002', status: '正常', section: ['半成品测试', '成品测试'] },
+   253→  { id: 3, name: '王五', account: 'wangwu', role: 'operator', phone: '137****3003', status: '正常', section: ['成品测试'] },
+   254→  { id: 4, name: '赵六', account: 'zhaoliu', role: 'viewer', phone: '136****4004', status: '正常', section: ['物料管理', '半成品测试'] },
+   255→  { id: 5, name: '钱七', account: 'qianqi', role: 'operator', phone: '135****5005', status: '禁用', section: ['老化测试'] },
+   256→  { id: 6, name: '孙八', account: 'sunba', role: 'viewer', phone: '134****6006', status: '正常', section: ['设备装箱'] },
+   257→  { id: 7, name: '周九', account: 'zhoujiu', role: 'admin', phone: '133****7007', status: '正常', section: ['系统管理', '物料管理'] },
+   258→  { id: 8, name: '吴十', account: 'wushi', role: 'operator', phone: '132****8008', status: '正常', section: ['电芯派克', '老化测试'] },
+   259→]
+   260→
+   261→/* 操作日志数据 */
+   262→const operationLogData: Record<number, Array<{ time: string; action: string; detail: string }>> = {
+   263→  1: [
+   264→    { time: '2026-05-11 08:30', action: '登录系统', detail: '管理员张三登录MES系统' },
+   265→    { time: '2026-05-10 14:22', action: '修改配置', detail: '修改半成品测试参数阈值' },
+   266→    { time: '2026-05-10 09:15', action: '审核数据', detail: '审核物料台账批次B20231024-CELL-01' },
+   267→    { time: '2026-05-09 16:40', action: '导出报表', detail: '导出本周产量统计报表' },
+   268→  ],
+   269→  2: [
+   270→    { time: '2026-05-11 07:55', action: '登录系统', detail: '操作员李四登录MES系统' },
+   271→    { time: '2026-05-10 15:10', action: '录入数据', detail: '录入半成品测试记录SN8839201992' },
+   272→    { time: '2026-05-10 10:30', action: '录入数据', detail: '录入物料台账批次数据' },
+   273→  ],
+   274→  3: [
+   275→    { time: '2026-05-11 08:10', action: '登录系统', detail: '操作员王五登录MES系统' },
+   276→    { time: '2026-05-10 11:20', action: '录入数据', detail: '录入成品测试记录' },
+   277→    { time: '2026-05-09 14:55', action: '录入数据', detail: '录入老化测试数据' },
+   278→  ],
+   279→  4: [
+   280→    { time: '2026-05-10 09:00', action: '登录系统', detail: '查看者赵六登录MES系统' },
+   281→    { time: '2026-05-09 13:30', action: '查看数据', detail: '查看数据看板统计信息' },
+   282→  ],
+   283→  5: [
+   284→    { time: '2026-05-08 10:20', action: '登录系统', detail: '操作员钱七登录MES系统' },
+   285→    { time: '2026-05-07 16:00', action: '录入数据', detail: '录入装箱数据' },
+   286→  ],
+   287→  6: [
+   288→    { time: '2026-05-10 08:45', action: '登录系统', detail: '查看者孙八登录MES系统' },
+   289→    { time: '2026-05-09 11:15', action: '查看数据', detail: '查看物料台账列表' },
+   290→  ],
+   291→  7: [
+   292→    { time: '2026-05-11 08:00', action: '登录系统', detail: '管理员周九登录MES系统' },
+   293→    { time: '2026-05-10 17:30', action: '修改配置', detail: '修改成品测试参数配置' },
+   294→    { time: '2026-05-10 12:00', action: '审核数据', detail: '审核装箱数据BOX-20231024-001' },
+   295→    { time: '2026-05-09 15:20', action: '用户管理', detail: '禁用操作员钱七账号' },
+   296→  ],
+   297→  8: [
+   298→    { time: '2026-05-10 07:50', action: '登录系统', detail: '操作员吴十登录MES系统' },
+   299→    { time: '2026-05-09 16:30', action: '录入数据', detail: '录入电芯派克数据' },
+   300→    { time: '2026-05-09 09:45', action: '录入数据', detail: '录入老化测试记录' },
+   301→  ],
+   302→}
+   303→
+   304→/* 装箱数据 */
+   305→const packagingRecords = [
+   306→  { batch: 'BOX-20231024-001', count: 50, cert3c: '202001090729XXXX', oidStatus: '已同步备案', operator: '张三', date: '2026/04/26', workOrder: 'WO-2026-0501', model: 'PB-10000mAh-A', subs: ['SN-SUB-8839201901', 'SN-SUB-8839201902', 'SN-SUB-8839201903', 'SN-SUB-8839201904', 'SN-SUB-8839201905', 'SN-SUB-8839201906'] },
+   307→  { batch: 'BOX-20231024-002', count: 50, cert3c: '202001090729XXXY', oidStatus: '已同步备案', operator: '李四', date: '2026/04/27', workOrder: 'WO-2026-0502', model: 'PB-20000mAh-B', subs: ['SN-SUB-8839201911', 'SN-SUB-8839201912', 'SN-SUB-8839201913', 'SN-SUB-8839201914'] },
+   308→]
+   309→
+   310→/* 成品组装 - 电芯与电路板组装数据 */
+   311→const cellPcbAssemblyData = [
+   312→  { id: 'ASM-CP-001', cellSn: 'CELL-20260510-001', pcbSn: 'PCB-20260510-001', time: '2026-05-10 08:30', operator: '张三', status: '已组装' },
+   313→  { id: 'ASM-CP-002', cellSn: 'CELL-20260510-002', pcbSn: 'PCB-20260510-002', time: '2026-05-10 08:45', operator: '李四', status: '已组装' },
+   314→  { id: 'ASM-CP-003', cellSn: 'CELL-20260511-003', pcbSn: 'PCB-20260511-003', time: '2026-05-11 09:10', operator: '张三', status: '已组装' },
+   315→  { id: 'ASM-CP-004', cellSn: 'CELL-20260511-004', pcbSn: 'PCB-20260511-004', time: '', operator: '', status: '待组装' },
+   316→  { id: 'ASM-CP-005', cellSn: 'CELL-20260511-005', pcbSn: 'PCB-20260511-005', time: '', operator: '', status: '待组装' },
+   317→]
+   318→
+   319→/* 成品组装 - 半成品与外壳组装数据 */
+   320→const semiShellAssemblyData = [
+   321→  { id: 'ASM-SS-001', cellSn: 'ASM-CP-001', pcbSn: 'SHELL-20260510-001', shellSn: 'PB-10000mAh-A', time: '2026-05-10 09:30', operator: '张三', status: '已组装' },
+   322→  { id: 'ASM-SS-002', cellSn: 'ASM-CP-002', pcbSn: 'SHELL-20260510-002', shellSn: 'PB-10000mAh-A', time: '2026-05-10 09:50', operator: '王五', status: '已组装' },
+   323→  { id: 'ASM-SS-003', cellSn: 'ASM-CP-003', pcbSn: 'SHELL-20260511-003', shellSn: 'PB-20000mAh-B', time: '2026-05-11 10:15', operator: '李四', status: '已组装' },
+   324→  { id: 'ASM-SS-004', cellSn: 'ASM-CP-004', pcbSn: 'SHELL-20260511-004', shellSn: 'PB-20000mAh-B', time: '', operator: '', status: '待组装' },
+   325→]
+   326→
+   327→/* 生产工单数据 */
+   328→const WORK_ORDERS = [
+   329→  { id: 'WO-2026-0501', productModel: 'PB-10000mAh-A', planQty: 500, completedQty: 320, priority: '高', status: '进行中', creator: '张三', createTime: '2026-05-08 09:00' },
+   330→  { id: 'WO-2026-0502', productModel: 'PB-20000mAh-B', planQty: 300, completedQty: 300, priority: '中', status: '已完成', creator: '李四', createTime: '2026-05-06 14:30' },
+   331→  { id: 'WO-2026-0503', productModel: 'PB-10000mAh-A', planQty: 200, completedQty: 0, priority: '低', status: '待接收', creator: '王五', createTime: '2026-05-11 10:00' },
+   332→  { id: 'WO-2026-0504', productModel: 'PB-20000mAh-B', planQty: 400, completedQty: 150, priority: '高', status: '进行中', creator: '张三', createTime: '2026-05-10 08:00' },
+   333→  { id: 'WO-2026-0505', productModel: 'PB-10000mAh-A', planQty: 100, completedQty: 100, priority: '中', status: '已完成', creator: '赵六', createTime: '2026-05-05 16:00' },
+   334→]
+   335→
+   336→/* 老化测试架数据 */
+   337→const racks = ['RACK-A01', 'RACK-A02', 'RACK-B01']
+   338→
+   339→/* 员工统计数据 */
+   340→const EMPLOYEE_STATS: Record<number, {
+   341→  operations: number; reviews: number; dataEntries: number; lastLogin: string;
+   342→  section: string[];
+   343→  sectionData: { label: string; value: string | number; unit: string; color: string }[];
+   344→}> = {
+   345→  1: { operations: 156, reviews: 42, dataEntries: 89, lastLogin: '2026-05-12 08:30', section: ['系统管理'],
+   346→    sectionData: [
+   347→      { label: '系统配置次数', value: 28, unit: '次', color: '#0891b2' },
+   348→      { label: '审核操作数', value: 42, unit: '次', color: '#059669' },
+   349→      { label: '数据录入', value: 89, unit: '条', color: '#7c3aed' },
+   350→      { label: '管理效率', value: '98.5', unit: '%', color: '#d97706' },
+   351→    ] },
+   352→  2: { operations: 234, reviews: 12, dataEntries: 156, lastLogin: '2026-05-12 07:55', section: ['半成品测试', '成品测试'],
+   353→    sectionData: [
+   354→      { label: '测试总数量', value: 234, unit: '台', color: '#0891b2' },
+   355→      { label: '通过数量', value: 218, unit: '台', color: '#059669' },
+   356→      { label: '异常数量', value: 16, unit: '台', color: '#e11d48' },
+   357→      { label: '通过率', value: '93.2', unit: '%', color: '#7c3aed' },
+   358→    ] },
+   359→  3: { operations: 198, reviews: 8, dataEntries: 145, lastLogin: '2026-05-12 08:10', section: ['成品测试'],
+   360→    sectionData: [
+   361→      { label: '测试总数量', value: 198, unit: '台', color: '#0891b2' },
+   362→      { label: '通过数量', value: 186, unit: '台', color: '#059669' },
+   363→      { label: '异常数量', value: 12, unit: '台', color: '#e11d48' },
+   364→      { label: '通过率', value: '93.9', unit: '%', color: '#7c3aed' },
+   365→    ] },
+   366→  4: { operations: 67, reviews: 0, dataEntries: 210, lastLogin: '2026-05-11 09:00', section: ['物料管理', '半成品测试'],
+   367→    sectionData: [
+   368→      { label: '入库批次', value: 45, unit: '批', color: '#0891b2' },
+   369→      { label: '出库批次', value: 38, unit: '批', color: '#059669' },
+   370→      { label: '库存预警', value: 3, unit: '项', color: '#e11d48' },
+   371→      { label: '数据录入', value: 210, unit: '条', color: '#7c3aed' },
+   372→    ] },
+   373→  5: { operations: 112, reviews: 0, dataEntries: 88, lastLogin: '2026-05-08 10:20', section: ['老化测试'],
+   374→    sectionData: [
+   375→      { label: '测试总数量', value: 112, unit: '台', color: '#0891b2' },
+   376→      { label: '合格数量', value: 98, unit: '台', color: '#059669' },
+   377→      { label: '不合格数量', value: 14, unit: '台', color: '#e11d48' },
+   378→      { label: '合格率', value: '87.5', unit: '%', color: '#d97706' },
+   379→    ] },
+   380→  6: { operations: 45, reviews: 0, dataEntries: 23, lastLogin: '2026-05-11 08:45', section: ['设备装箱'],
+   381→    sectionData: [
+   382→      { label: '装箱总数', value: 45, unit: '箱', color: '#0891b2' },
+   383→      { label: '备案同步', value: 43, unit: '次', color: '#059669' },
+   384→      { label: '待备案', value: 2, unit: '次', color: '#d97706' },
+   385→      { label: '数据录入', value: 23, unit: '条', color: '#7c3aed' },
+   386→    ] },
+   387→  7: { operations: 134, reviews: 38, dataEntries: 72, lastLogin: '2026-05-12 08:00', section: ['系统管理', '物料管理'],
+   388→    sectionData: [
+   389→      { label: '系统配置次数', value: 22, unit: '次', color: '#0891b2' },
+   390→      { label: '审核操作数', value: 38, unit: '次', color: '#059669' },
+   391→      { label: '数据录入', value: 72, unit: '条', color: '#7c3aed' },
+   392→      { label: '管理效率', value: '97.1', unit: '%', color: '#d97706' },
+   393→    ] },
+   394→  8: { operations: 178, reviews: 5, dataEntries: 132, lastLogin: '2026-05-11 07:50', section: ['电芯派克', '老化测试'],
+   395→    sectionData: [
+   396→      { label: '测试总数量', value: 178, unit: '个', color: '#0891b2' },
+   397→      { label: '合格数量', value: 165, unit: '个', color: '#059669' },
+   398→      { label: '异常数量', value: 13, unit: '个', color: '#e11d48' },
+   399→      { label: '合格率', value: '92.7', unit: '%', color: '#7c3aed' },
+   400→    ] },
+   401→}
+   402→
+   403→/* 权限配置数据 */
+   404→const ROLE_PERMISSIONS: Record<string, { label: string; permissions: { key: string; label: string; allowed: boolean }[] }> = {
+   405→  admin: { label: '管理员', permissions: [
+   406→    { key: 'dashboard', label: '数据看板', allowed: true },
+   407→    { key: 'material', label: '物料台账', allowed: true },
+   408→    { key: 'semiTest', label: '半成品测试', allowed: true },
+   409→    { key: 'productTest', label: '成品测试', allowed: true },
+   410→    { key: 'cellPackTest', label: '电芯派克', allowed: true },
+   411→    { key: 'agingTest', label: '老化测试', allowed: true },
+   412→    { key: 'assembly', label: '成品组装', allowed: true },
+   413→    { key: 'workOrder', label: '生产工单', allowed: true },
+   414→    { key: 'packaging', label: '设备装箱', allowed: true },
+   415→    { key: 'labelPrint', label: '标签打印', allowed: true },
+   416→    { key: 'personnel', label: '人员管理', allowed: true },
+   417→    { key: 'systemConfig', label: '系统配置', allowed: true },
+   418→  ] },
+   419→  operator: { label: '操作员', permissions: [
+   420→    { key: 'dashboard', label: '数据看板', allowed: true },
+   421→    { key: 'material', label: '物料台账', allowed: true },
+   422→    { key: 'semiTest', label: '半成品测试', allowed: true },
+   423→    { key: 'productTest', label: '成品测试', allowed: true },
+   424→    { key: 'cellPackTest', label: '电芯派克', allowed: true },
+   425→    { key: 'agingTest', label: '老化测试', allowed: true },
+   426→    { key: 'assembly', label: '成品组装', allowed: true },
+   427→    { key: 'workOrder', label: '生产工单', allowed: true },
+   428→    { key: 'packaging', label: '设备装箱', allowed: true },
+   429→    { key: 'labelPrint', label: '标签打印', allowed: true },
+   430→    { key: 'personnel', label: '人员管理', allowed: false },
+   431→    { key: 'systemConfig', label: '系统配置', allowed: false },
+   432→  ] },
+   433→  viewer: { label: '查看者', permissions: [
+   434→    { key: 'dashboard', label: '数据看板', allowed: true },
+   435→    { key: 'material', label: '物料台账', allowed: true },
+   436→    { key: 'semiTest', label: '半成品测试', allowed: true },
+   437→    { key: 'productTest', label: '成品测试', allowed: true },
+   438→    { key: 'cellPackTest', label: '电芯派克', allowed: true },
+   439→    { key: 'agingTest', label: '老化测试', allowed: true },
+   440→    { key: 'assembly', label: '成品组装', allowed: true },
+   441→    { key: 'workOrder', label: '生产工单', allowed: true },
+   442→    { key: 'packaging', label: '设备装箱', allowed: true },
+   443→    { key: 'labelPrint', label: '标签打印', allowed: false },
+   444→    { key: 'personnel', label: '人员管理', allowed: false },
+   445→    { key: 'systemConfig', label: '系统配置', allowed: false },
+   446→  ] },
+   447→}
+   448→
+   449→
+   450→/* ================================================================
+   451→   通用组件
+   452→   ================================================================ */
+   453→
+   454→function useAnimatedNumber(target: number, duration = 1500, decimals = 0) {
+   455→  const [current, setCurrent] = useState(0)
+   456→  const startTime = useRef<number | null>(null)
+   457→  const rafId = useRef<number | null>(null)
+   458→  const prevTarget = useRef(target)
+   459→
+   460→  useEffect(() => {
+   461→    startTime.current = null
+   462→    const startValue = prevTarget.current === target ? current : prevTarget.current
+   463→    prevTarget.current = target
+   464→    const animate = (ts: number) => {
+   465→      if (!startTime.current) startTime.current = ts
+   466→      const p = Math.min((ts - startTime.current) / duration, 1)
+   467→      const eased = 1 - Math.pow(1 - p, 3)
+   468→      setCurrent(Number((startValue + (target - startValue) * eased).toFixed(decimals)))
+   469→      if (p < 1) rafId.current = requestAnimationFrame(animate)
+   470→    }
+   471→    rafId.current = requestAnimationFrame(animate)
+   472→    return () => { if (rafId.current) cancelAnimationFrame(rafId.current) }
+   473→  }, [target, duration, decimals])
+   474→  return current
+   475→}
+   476→
+   477→function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
+   478→  if (!active || !payload?.length) return null
+   479→  return (
+   480→    <div className="custom-tooltip" style={{ padding: '10px 14px', borderRadius: 10 }}>
+   481→      {label && <div style={{ color: '#475569', marginBottom: 6, fontSize: 12, fontWeight: 600 }}>{label}</div>}
+   482→      {payload.map((e, i) => (
+   483→        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+   484→          <div style={{ width: 8, height: 8, borderRadius: 3, backgroundColor: e.color || '#0891b2' }} />
+   485→          <span style={{ color: '#64748b', fontSize: 12 }}>{e.name}:</span>
+   486→          <span style={{ color: '#1e293b', fontSize: 12, fontWeight: 700 }}>{typeof e.value === 'number' ? e.value.toLocaleString() : e.value}</span>
+   487→        </div>
+   488→      ))}
+   489→    </div>
+   490→  )
+   491→}
+   492→
+   493→function KPICardComponent({ data, index }: { data: KPICard; index: number }) {
+   494→  const av = useAnimatedNumber(data.value, 1800, data.decimals || 0)
+   495→  const Icon = data.icon
+   496→  return (
+   497→    <motion.div
+   498→      initial={{ opacity: 0, y: 20 }}
+   499→      animate={{ opacity: 1, y: 0 }}
+   500→      transition={{ delay: index * 0.05, duration: 0.5, ease: 'easeOut' }}
+   501→      className={`dash-card ${data.shadowCls} p-4 transition-all duration-300 hover:scale-[1.03] cursor-default group`}
+   502→    >
+   503→      <div className="flex items-start justify-between mb-3">
+   504→        <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110" style={{ backgroundColor: `${data.color}12` }}>
+   505→          <Icon className="w-5 h-5" style={{ color: data.color }} />
+   506→        </div>
+   507→        <div className="flex flex-col items-end gap-1">
+   508→          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 font-medium">{data.category}</span>
+   509→          {data.trend && (
+   510→            <div className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${data.trendType === 'up' ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+   511→              {data.trendType === 'up' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}{data.trend}
+   512→            </div>
+   513→          )}
+   514→          {data.status && (
+   515→            <div className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${data.status === 'pass' ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+   516→              {data.status === 'pass' ? '✓ 达标' : '✕ 异常'}
+   517→            </div>
+   518→          )}
+   519→        </div>
+   520→      </div>
+   521→      <div className="text-2xl font-bold tracking-tight" style={{ color: data.color }}>
+   522→        {av.toLocaleString()}<span className="text-sm font-normal text-slate-400 ml-1">{data.unit}</span>
+   523→      </div>
+   524→      <div className="text-xs text-slate-500 mt-1">{data.title}</div>
+   525→      {data.target && (
+   526→        <div className="mt-2 w-full bg-slate-100 rounded-full h-1.5">
+   527→          <div className="h-1.5 rounded-full transition-all duration-1000" style={{ width: `${Math.min((data.value / data.target) * 100, 100)}%`, backgroundColor: data.color }} />
+   528→        </div>
+   529→      )}
+   530→    </motion.div>
+   531→  )
+   532→}
+   533→
+   534→function ChartCard({ title, icon, children, delay = 0, className = '' }: {
+   535→  title: string; icon: React.ReactNode; children: React.ReactNode; delay?: number; className?: string
+   536→}) {
+   537→  return (
+   538→    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.5, ease: 'easeOut' }}
+   539→      className={`dash-card p-5 ${className}`}>
+   540→      <div className="flex items-center gap-2 mb-4">{icon}<h3 className="text-sm font-semibold text-slate-700">{title}</h3></div>
+   541→      {children}
+   542→    </motion.div>
+   543→  )
+   544→}
+   545→
+   546→function SectionCard({ title, icon, children, action }: {
+   547→  title: string; icon: React.ReactNode; children: React.ReactNode; action?: React.ReactNode
+   548→}) {
+   549→  return (
+   550→    <div className="dash-card p-0 overflow-hidden">
+   551→      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+   552→        <div className="flex items-center gap-2">{icon}<h3 className="text-base font-semibold text-slate-700">{title}</h3></div>
+   553→        {action}
+   554→      </div>
+   555→      <div className="p-6">{children}</div>
+   556→    </div>
+   557→  )
+   558→}
+   559→
+   560→
+   561→/* ================================================================
+   562→   页面组件
+   563→   ================================================================ */
+   564→
+   565→/* ---------- 1. 数据看板 ---------- */
+   566→function DashboardPage() {
+   567→  const [activeTime, setActiveTime] = useState('today')
+   568→  return (
+   569→    <div className="space-y-5">
+   570→      {/* 时间选择器 */}
+   571→      <div className="flex justify-end">
+   572→        <div className="flex items-center bg-white rounded-lg p-0.5 border border-slate-200 shadow-sm">
+   573→          {timeOptions.map(opt => (
+   574→            <button key={opt.key} onClick={() => setActiveTime(opt.key)}
+   575→              className={`px-3 py-1.5 text-xs rounded-md transition-all ${activeTime === opt.key ? 'bg-cyan-600 text-white font-semibold shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
+   576→              {opt.label}
+   577→            </button>
+   578→          ))}
+   579→        </div>
+   580→      </div>
+   581→
+   582→      {/* KPI */}
+   583→      <section>
+   584→        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+   585→          {kpiData.map((k, i) => <KPICardComponent key={k.title} data={k} index={i} />)}
+   586→        </div>
+   587→      </section>
+   588→
+   589→      {/* 异常率 */}
+   590→      <motion.section initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="dash-card p-4">
+   591→        <div className="flex items-center gap-3 mb-3">
+   592→          <Siren className="w-4 h-4 text-rose-500" />
+   593→          <h3 className="text-sm font-semibold text-slate-700">异常率监控</h3>
+   594→          <div className="flex-1 h-px bg-gradient-to-r from-rose-200 to-transparent" />
+   595→        </div>
+   596→        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+   597→          {anomalyItems.map((item, idx) => (
+   598→            <motion.div key={item.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 + idx * 0.05 }}
+   599→              className={`relative flex items-center justify-between p-3 rounded-lg border transition-all hover:scale-[1.02] ${item.level === 'danger' ? 'bg-rose-50/80 border-rose-200 hover:border-rose-300' : 'bg-amber-50/80 border-amber-200 hover:border-amber-300'}`}>
+   600→              <div className="flex items-center gap-2">
+   601→                <AlertCircle className={`w-3.5 h-3.5 ${item.level === 'danger' ? 'text-rose-500' : 'text-amber-500'}`} />
+   602→                <span className="text-xs text-slate-600">{item.label}</span>
+   603→              </div>
+   604→              <span className={`text-sm font-bold ${item.level === 'danger' ? 'text-rose-600' : 'text-amber-600'}`}>{item.value}{item.unit}</span>
+   605→              {item.level === 'danger' && <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+   606→            </motion.div>
+   607→          ))}
+   608→        </div>
+   609→      </motion.section>
+   610→
+   611→      {/* 图表第一行 */}
+   612→      <section className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+   613→        <ChartCard title="今日生产与测试趋势监控" icon={<TrendingUp className="w-4 h-4 text-cyan-600" />} delay={0.5} className="lg:col-span-3">
+   614→          <div className="h-[320px]">
+   615→            <ResponsiveContainer width="100%" height="100%">
+   616→              <AreaChart data={trendData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+   617→                <defs>
+   618→                  <linearGradient id="gC" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0891b2" stopOpacity={0.2} /><stop offset="95%" stopColor="#0891b2" stopOpacity={0} /></linearGradient>
+   619→                  <linearGradient id="gG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#059669" stopOpacity={0.2} /><stop offset="95%" stopColor="#059669" stopOpacity={0} /></linearGradient>
+   620→                  <linearGradient id="gP" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#7c3aed" stopOpacity={0.15} /><stop offset="95%" stopColor="#7c3aed" stopOpacity={0} /></linearGradient>
+   621→                </defs>
+   622→                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+   623→                <XAxis dataKey="time" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: '#e2e8f0' }} />
+   624→                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: '#e2e8f0' }} />
+   625→                <Tooltip content={<CustomTooltip />} />
+   626→                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} formatter={(v: string) => <span style={{ color: '#64748b' }}>{v}</span>} />
+   627→                <Area type="monotone" dataKey="semiTest" name="半成品测试量" stroke="#0891b2" strokeWidth={2} fill="url(#gC)" dot={{ r: 3, fill: '#0891b2', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
+   628→                <Area type="monotone" dataKey="finishedProduct" name="成品入库量" stroke="#059669" strokeWidth={2} fill="url(#gG)" dot={{ r: 3, fill: '#059669', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
+   629→                <Area type="monotone" dataKey="cabinetOutput" name="机柜产出量" stroke="#7c3aed" strokeWidth={2} fill="url(#gP)" dot={{ r: 3, fill: '#7c3aed', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
+   630→              </AreaChart>
+   631→            </ResponsiveContainer>
+   632→          </div>
+   633→        </ChartCard>
+   634→        <ChartCard title="成品测试结果占比" icon={<BarChart3 className="w-4 h-4 text-emerald-600" />} delay={0.55} className="lg:col-span-2">
+   635→          <div className="h-[260px]">
+   636→            <ResponsiveContainer width="100%" height="100%">
+   637→              <PieChart>
+   638→                <Pie data={testingPieData} cx="50%" cy="45%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
+   639→                  {testingPieData.map((e, i) => <Cell key={i} fill={e.color} />)}
+   640→                </Pie>
+   641→                <Tooltip content={<CustomTooltip />} />
+   642→                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} formatter={(v: string) => <span style={{ color: '#64748b' }}>{v}</span>} />
+   643→              </PieChart>
+   644→            </ResponsiveContainer>
+   645→          </div>
+   646→          <div className="flex justify-center -mt-2 mb-1"><div className="text-center"><div className="text-2xl font-bold text-emerald-600">98.6%</div><div className="text-[10px] text-slate-400">综合通过率</div></div></div>
+   647→        </ChartCard>
+   648→      </section>
+   649→
+   650→      {/* 图表第二行 */}
+   651→      <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+   652→        <ChartCard title="核心供应商物料合格率对比" icon={<Wrench className="w-4 h-4 text-violet-600" />} delay={0.6}>
+   653→          <div className="h-[300px]"><ResponsiveContainer><BarChart data={supplierData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+   654→            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+   655→            <XAxis type="number" domain={[80, 100]} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: '#e2e8f0' }} tickFormatter={v => `${v}%`} />
+   656→            <YAxis type="category" dataKey="name" tick={{ fill: '#475569', fontSize: 12 }} axisLine={{ stroke: '#e2e8f0' }} width={80} />
+   657→            <Tooltip content={<CustomTooltip />} />
+   658→            <Bar dataKey="rate" name="合格率" radius={[0, 6, 6, 0]} barSize={22} label={{ position: 'right', fill: '#64748b', fontSize: 11, formatter: (v: number) => `${v}%` }}>
+   659→              {supplierData.map((e, i) => <Cell key={i} fill={e.fill} />)}
+   660→            </Bar>
+   661→          </BarChart></ResponsiveContainer></div>
+   662→        </ChartCard>
+   663→        <ChartCard title="异常隔离原因分析 (Top 5)" icon={<AlertTriangle className="w-4 h-4 text-rose-500" />} delay={0.65}>
+   664→          <div className="h-[300px]"><ResponsiveContainer><BarChart data={defectData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+   665→            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+   666→            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: '#e2e8f0' }} />
+   667→            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: '#e2e8f0' }} />
+   668→            <Tooltip content={<CustomTooltip />} />
+   669→            <Bar dataKey="count" name="异常频次" radius={[6, 6, 0, 0]} barSize={36} label={{ position: 'top', fill: '#64748b', fontSize: 11 }}>
+   670→              {defectData.map((e, i) => <Cell key={i} fill={e.fill} />)}
+   671→            </Bar>
+   672→          </BarChart></ResponsiveContainer></div>
+   673→        </ChartCard>
+   674→      </section>
+   675→
+   676→      {/* 图表第三行 */}
+   677→      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+   678→        <ChartCard title="物料到货质量分布" icon={<Package className="w-4 h-4 text-amber-600" />} delay={0.7}>
+   679→          <div className="h-[280px]"><ResponsiveContainer><PieChart>
+   680→            <Pie data={materialPieData} cx="50%" cy="42%" outerRadius={80} innerRadius={35} paddingAngle={2} dataKey="value" stroke="none">
+   681→              {materialPieData.map((e, i) => <Cell key={i} fill={e.color} />)}
+   682→            </Pie>
+   683→            <Tooltip content={<CustomTooltip />} />
+   684→            <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} formatter={(v: string) => <span style={{ color: '#64748b' }}>{v}</span>} />
+   685→          </PieChart></ResponsiveContainer></div>
+   686→          <div className="mt-2 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
+   687→            <div className="text-center"><div className="text-lg font-bold text-emerald-600">11,000</div><div className="text-[10px] text-slate-400">合格数量</div></div>
+   688→            <div className="text-center"><div className="text-lg font-bold text-rose-600">4,000</div><div className="text-[10px] text-slate-400">不合格数量</div></div>
+   689→          </div>
+   690→        </ChartCard>
+   691→        <ChartCard title="全流程质量雷达图" icon={<Shield className="w-4 h-4 text-cyan-600" />} delay={0.75}>
+   692→          <div className="h-[320px]"><ResponsiveContainer><RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+   693→            <PolarGrid stroke="#e2e8f0" />
+   694→            <PolarAngleAxis dataKey="dimension" tick={{ fill: '#64748b', fontSize: 10 }} />
+   695→            <PolarRadiusAxis angle={90} domain={[80, 100]} tick={{ fill: '#94a3b8', fontSize: 9 }} axisLine={false} />
+   696→            <Radar name="合格率" dataKey="value" stroke="#0891b2" fill="#0891b2" fillOpacity={0.15} strokeWidth={2} dot={{ r: 3, fill: '#0891b2', stroke: '#fff', strokeWidth: 1 }} />
+   697→            <Tooltip content={<CustomTooltip />} />
+   698→          </RadarChart></ResponsiveContainer></div>
+   699→        </ChartCard>
+   700→        <ChartCard title="各阶段合格率仪表盘" icon={<Target className="w-4 h-4 text-emerald-600" />} delay={0.8}>
+   701→          <div className="h-[320px]"><ResponsiveContainer><RadialBarChart cx="50%" cy="50%" innerRadius="25%" outerRadius="85%" data={gaugeData} startAngle={180} endAngle={0}>
+   702→            <RadialBar dataKey="value" background={{ fill: '#f1f5f9' }} cornerRadius={6}>
+   703→              {gaugeData.map((e, i) => <Cell key={i} fill={e.fill} />)}
+   704→            </RadialBar>
+   705→            <Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} layout="horizontal" verticalAlign="bottom" formatter={(v: string) => <span style={{ color: '#64748b' }}>{v}</span>} />
+   706→            <Tooltip content={<CustomTooltip />} />
+   707→          </RadialBarChart></ResponsiveContainer></div>
+   708→        </ChartCard>
+   709→      </section>
+   710→
+   711→      {/* 图表第四行 */}
+   712→      <section className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+   713→        <ChartCard title="本周产量与合格/异常对比" icon={<Layers className="w-4 h-4 text-violet-600" />} delay={0.85} className="lg:col-span-3">
+   714→          <div className="h-[300px]"><ResponsiveContainer><ComposedChart data={weeklyData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+   715→            <defs>
+   716→              <linearGradient id="bG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#059669" stopOpacity={0.9} /><stop offset="95%" stopColor="#059669" stopOpacity={0.5} /></linearGradient>
+   717→              <linearGradient id="bR" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#e11d48" stopOpacity={0.9} /><stop offset="95%" stopColor="#e11d48" stopOpacity={0.5} /></linearGradient>
+   718→            </defs>
+   719→            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+   720→            <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: '#e2e8f0' }} />
+   721→            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: '#e2e8f0' }} />
+   722→            <Tooltip content={<CustomTooltip />} />
+   723→            <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} formatter={(v: string) => <span style={{ color: '#64748b' }}>{v}</span>} />
+   724→            <Bar dataKey="pass" name="合格" fill="url(#bG)" radius={[3, 3, 0, 0]} barSize={18} />
+   725→            <Bar dataKey="fail" name="异常" fill="url(#bR)" radius={[3, 3, 0, 0]} barSize={18} />
+   726→            <Line type="monotone" dataKey="output" name="总产出" stroke="#0891b2" strokeWidth={2} dot={{ r: 4, fill: '#0891b2', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+   727→          </ComposedChart></ResponsiveContainer></div>
+   728→        </ChartCard>
+   729→        <ChartCard title="装箱与备案汇总" icon={<Box className="w-4 h-4 text-amber-600" />} delay={0.9} className="lg:col-span-2">
+   730→          <div className="h-[240px]"><ResponsiveContainer><PieChart>
+   731→            <Pie data={packagingData} cx="50%" cy="45%" outerRadius={80} innerRadius={45} paddingAngle={4} dataKey="value" stroke="none">
+   732→              {packagingData.map((e, i) => <Cell key={i} fill={e.color} />)}
+   733→            </Pie>
+   734→            <Tooltip content={<CustomTooltip />} />
+   735→            <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} formatter={(v: string) => <span style={{ color: '#64748b' }}>{v}</span>} />
+   736→          </PieChart></ResponsiveContainer></div>
+   737→          <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
+   738→            <div className="grid grid-cols-2 gap-3">
+   739→              <div className="text-center p-2 rounded-lg bg-cyan-50 border border-cyan-100"><div className="text-lg font-bold text-cyan-700">15,600</div><div className="text-[10px] text-slate-400">已装机柜数</div></div>
+   740→              <div className="text-center p-2 rounded-lg bg-emerald-50 border border-emerald-100"><div className="text-lg font-bold text-emerald-700">100%</div><div className="text-[10px] text-slate-400">OID备案率</div></div>
+   741→            </div>
+   742→            <div className="w-full bg-slate-100 rounded-full h-1.5"><div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-500 via-cyan-500 to-violet-500" style={{ width: '100%' }} /></div>
+   743→          </div>
+   744→        </ChartCard>
+   745→      </section>
+   746→    </div>
+   747→  )
+   748→}
+   749→
+   750→/* ---------- 2. 物料台账 ---------- */
+   751→function MaterialPage() {
+   752→  const [searchTerm, setSearchTerm] = useState('')
+   753→  const [materialEntryOpen, setMaterialEntryOpen] = useState(false)
+   754→  const [materialEntryMode, setMaterialEntryMode] = useState<'form' | 'upload'>('form')
+   755→  const [testReportOpen, setTestReportOpen] = useState(false)
+   756→  const [selectedMaterial, setSelectedMaterial] = useState<typeof materialData[0] | null>(null)
+   757→  const filtered = materialData.filter(m =>
+   758→    m.name.includes(searchTerm) || m.batch.includes(searchTerm) || m.supplier.includes(searchTerm)
+   759→  )
+   760→  return (
+   761→    <div className="space-y-5">
+   762→      <SectionCard title="物料台账列表" icon={<ClipboardList className="w-5 h-5 text-cyan-600" />}
+   763→        action={
+   764→          <button onClick={() => setMaterialEntryOpen(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm">
+   765→            <Plus className="w-4 h-4" /> 物料录入
+   766→          </button>
+   767→        }
+   768→      >
+   769→        {/* 搜索 + 统计 */}
+   770→        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
+   771→          <div className="relative">
+   772→            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+   773→            <input type="text" placeholder="搜索物料名称 / 批次码 / 供应商" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+   774→              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all w-72" />
+   775→          </div>
+   776→          <div className="flex gap-4 text-sm">
+   777→            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-slate-300" /><span className="text-slate-500">总批次: <strong className="text-slate-700">{materialData.length}</strong></span></div>
+   778→            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-slate-500">合格: <strong className="text-emerald-600">{materialData.filter(m => m.result === '合格').length}</strong></span></div>
+   779→            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-rose-500" /><span className="text-slate-500">不合格: <strong className="text-rose-600">{materialData.filter(m => m.result === '不合格').length}</strong></span></div>
+   780→          </div>
+   781→        </div>
+   782→        {/* 表格 */}
+   783→        <div className="overflow-x-auto rounded-lg border border-slate-200">
+   784→          <table className="data-table">
+   785→            <thead>
+   786→              <tr><th>物料批次码</th><th>物料名称</th><th>供应商</th><th>供应商编号</th><th>品牌名称</th><th>存放位置</th><th>规格</th><th>到货数量</th><th>测试结果</th><th>状态</th><th>到货日期</th><th>测试日期</th><th>操作</th></tr>
+   787→            </thead>
+   788→            <tbody>
+   789→              {filtered.map((m, i) => (
+   790→                <tr key={i}>
+   791→                  <td className="font-mono text-xs text-slate-600">{m.batch}</td>
+   792→                  <td className="font-semibold">{m.name}</td>
+   793→                  <td>{m.supplier}</td>
+   794→                  <td className="font-mono text-xs text-cyan-600">{m.supplierId}</td>
+   795→                  <td className="font-medium text-slate-700">{m.brandName}</td>
+   796→                  <td><span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">{m.storageLocation}</span></td>
+   797→                  <td className="text-slate-500">{m.spec}</td>
+   798→                  <td className="font-semibold">{m.qty.toLocaleString()}</td>
+   799→                  <td><span className={m.result === '合格' ? 'badge-pass' : 'badge-fail'}>{m.result === '合格' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{m.result}</span></td>
+   800→                  <td><span className="badge-tested">{m.status}</span></td>
+   801→                  <td className="text-xs text-slate-500 whitespace-nowrap">{m.arrival}</td>
+   802→                  <td className="text-xs text-slate-500 whitespace-nowrap">{m.testDate}</td>
+   803→                  <td><button onClick={() => { setSelectedMaterial(m); setTestReportOpen(true) }} className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium"><FileText className="w-3.5 h-3.5" />测试报告</button></td>
+   804→                </tr>
+   805→              ))}
+   806→            </tbody>
+   807→          </table>
+   808→        </div>
+   809→      </SectionCard>
+   810→
+   811→      {/* 物料录入弹窗 */}
+   812→      <Dialog open={materialEntryOpen} onOpenChange={setMaterialEntryOpen}>
+   813→        <DialogContent className="sm:max-w-[600px] bg-white">
+   814→          <DialogHeader>
+   815→            <DialogTitle className="flex items-center gap-2 text-slate-800">
+   816→              <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
+   817→                <Plus className="w-4 h-4 text-cyan-600" />
+   818→              </div>
+   819→              物料录入
+   820→            </DialogTitle>
+   821→            <DialogDescription className="text-slate-500">请填写物料基本信息并提交入库</DialogDescription>
+   822→          </DialogHeader>
+   823→          {/* 切换按钮 */}
+   824→          <div className="flex items-center bg-slate-100 rounded-lg p-1 mb-2">
+   825→            <button
+   826→              onClick={() => setMaterialEntryMode('form')}
+   827→              className={`flex items-center gap-1.5 flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${materialEntryMode === 'form' ? 'bg-white text-cyan-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+   828→            >
+   829→              <FileSpreadsheet className="w-4 h-4" />
+   830→              表单填写
+   831→            </button>
+   832→            <button
+   833→              onClick={() => setMaterialEntryMode('upload')}
+   834→              className={`flex items-center gap-1.5 flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${materialEntryMode === 'upload' ? 'bg-white text-cyan-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+   835→            >
+   836→              <FileUp className="w-4 h-4" />
+   837→              上传文件
+   838→            </button>
+   839→          </div>
+   840→          {/* 表单填写模式 */}
+   841→          {materialEntryMode === 'form' && (
+   842→            <div className="grid grid-cols-2 gap-4 py-4">
+   843→              <div className="space-y-2">
+   844→                <label className="text-xs font-semibold text-slate-700">物料名称 <span className="text-rose-500">*</span></label>
+   845→                <input type="text" placeholder="例如：电芯" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all" />
+   846→              </div>
+   847→              <div className="space-y-2">
+   848→                <label className="text-xs font-semibold text-slate-700">供应商 <span className="text-rose-500">*</span></label>
+   849→                <input type="text" placeholder="例如：宁德新能源" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all" />
+   850→              </div>
+   851→              <div className="space-y-2">
+   852→                <label className="text-xs font-semibold text-slate-700">规格型号</label>
+   853→                <input type="text" placeholder="例如：10000mAh 聚合物" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all" />
+   854→              </div>
+   855→              <div className="space-y-2">
+   856→                <label className="text-xs font-semibold text-slate-700">到货数量 <span className="text-rose-500">*</span></label>
+   857→                <input type="number" placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all" />
+   858→              </div>
+   859→              <div className="space-y-2">
+   860→                <label className="text-xs font-semibold text-slate-700">物料批次码</label>
+   861→                <input type="text" placeholder="系统自动生成" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all bg-slate-50" readOnly />
+   862→              </div>
+   863→              <div className="space-y-2">
+   864→                <label className="text-xs font-semibold text-slate-700">到货日期</label>
+   865→                <input type="datetime-local" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all" />
+   866→              </div>
+   867→            </div>
+   868→          )}
+   869→          {/* 上传文件模式 */}
+   870→          {materialEntryMode === 'upload' && (
+   871→            <div className="py-4">
+   872→              <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-cyan-400 hover:bg-cyan-50/30 transition-all cursor-pointer group">
+   873→                <div className="w-14 h-14 rounded-full bg-cyan-50 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+   874→                  <Upload className="w-7 h-7 text-cyan-500" />
+   875→                </div>
+   876→                <p className="text-sm font-semibold text-slate-700 mb-1">点击或拖拽文件到此区域上传</p>
+   877→                <p className="text-xs text-slate-400 mb-3">支持 .xlsx, .xls, .csv 格式，单次最多上传5个文件</p>
+   878→                <button className="px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm">
+   879→                  选择文件
+   880→                </button>
+   881→              </div>
+   882→              <div className="mt-4 space-y-2">
+   883→                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+   884→                  <div className="flex items-center gap-3">
+   885→                    <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
+   886→                    <div>
+   887→                      <p className="text-sm font-medium text-slate-700">物料清单_20260511.xlsx</p>
+   888→                      <p className="text-xs text-slate-400">128 KB - 上传成功</p>
+   889→                    </div>
+   890→                  </div>
+   891→                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-medium">已上传</span>
+   892→                </div>
+   893→              </div>
+   894→            </div>
+   895→          )}
+   896→          <DialogFooter className="gap-2">
+   897→            <DialogClose asChild>
+   898→              <button className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">取消</button>
+   899→            </DialogClose>
+   900→            <button onClick={() => setMaterialEntryOpen(false)} className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm">
+   901→              <Save className="w-4 h-4" /> {materialEntryMode === 'form' ? '提交录入' : '确认上传'}
+   902→            </button>
+   903→          </DialogFooter>
+   904→        </DialogContent>
+   905→      </Dialog>
+   906→
+   907→      {/* 物料测试报告弹窗 */}
+   908→      <Dialog open={testReportOpen} onOpenChange={setTestReportOpen}>
+   909→        <DialogContent className="sm:max-w-[650px] bg-white">
+   910→          <DialogHeader>
+   911→            <DialogTitle className="flex items-center gap-2 text-slate-800">
+   912→              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+   913→                <FileText className="w-4 h-4 text-emerald-600" />
+   914→              </div>
+   915→              物料测试报告
+   916→            </DialogTitle>
+   917→            <DialogDescription className="text-slate-500">物料来料检验报告详情</DialogDescription>
+   918→          </DialogHeader>
+   919→          {selectedMaterial && (
+   920→            <div className="py-4 space-y-4">
+   921→              {/* 基本信息 */}
+   922→              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+   923→                <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-cyan-500" />基本信息</h4>
+   924→                <div className="grid grid-cols-2 gap-3 text-xs">
+   925→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">批次码:</span><span className="font-mono font-semibold text-slate-700">{selectedMaterial.batch}</span></div>
+   926→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">物料名称:</span><span className="font-semibold text-slate-700">{selectedMaterial.name}</span></div>
+   927→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">供应商:</span><span className="text-slate-700">{selectedMaterial.supplier}</span></div>
+   928→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">规格:</span><span className="text-slate-700">{selectedMaterial.spec}</span></div>
+   929→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">到货数量:</span><span className="font-semibold text-slate-700">{selectedMaterial.qty.toLocaleString()}</span></div>
+   930→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">状态:</span><span className="badge-tested">{selectedMaterial.status}</span></div>
+   931→                </div>
+   932→              </div>
+   933→              {/* 测试结果 */}
+   934→              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+   935→                <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-emerald-500" />测试结果</h4>
+   936→                <div className="grid grid-cols-2 gap-3 text-xs">
+   937→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">测试结果:</span><span className={selectedMaterial.result === '合格' ? 'badge-pass' : 'badge-fail'}>{selectedMaterial.result === '合格' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{selectedMaterial.result}</span></div>
+   938→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">到货日期:</span><span className="text-slate-700">{selectedMaterial.arrival}</span></div>
+   939→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">测试日期:</span><span className="text-slate-700">{selectedMaterial.testDate}</span></div>
+   940→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">检验员:</span><span className="text-slate-700">A012</span></div>
+   941→                </div>
+   942→              </div>
+   943→              {/* 检验项目明细 */}
+   944→              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+   945→                <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-violet-500" />检验项目明细</h4>
+   946→                <table className="w-full text-xs">
+   947→                  <thead><tr className="border-b border-slate-200"><th className="text-left py-2 text-slate-500 font-semibold">检验项目</th><th className="text-left py-2 text-slate-500 font-semibold">标准值</th><th className="text-left py-2 text-slate-500 font-semibold">实测值</th><th className="text-left py-2 text-slate-500 font-semibold">结果</th></tr></thead>
+   948→                  <tbody>
+   949→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">外观检查</td><td className="py-2 text-slate-500">无缺陷</td><td className="py-2 text-slate-700">合格</td><td className="py-2"><span className="badge-pass"><CheckCircle2 className="w-2.5 h-2.5" />合格</span></td></tr>
+   950→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">尺寸检测</td><td className="py-2 text-slate-500">公差 ±0.1mm</td><td className="py-2 text-slate-700">±0.05mm</td><td className="py-2"><span className="badge-pass"><CheckCircle2 className="w-2.5 h-2.5" />合格</span></td></tr>
+   951→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">电性能测试</td><td className="py-2 text-slate-500">内阻 ≤50mΩ</td><td className="py-2 text-slate-700">{selectedMaterial.result === '合格' ? '35mΩ' : '68mΩ'}</td><td className="py-2"><span className={selectedMaterial.result === '合格' ? 'badge-pass' : 'badge-fail'}>{selectedMaterial.result === '合格' ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}{selectedMaterial.result === '合格' ? '合格' : '不合格'}</span></td></tr>
+   952→                    <tr><td className="py-2 text-slate-700">耐压测试</td><td className="py-2 text-slate-500">≥500V</td><td className="py-2 text-slate-700">550V</td><td className="py-2"><span className="badge-pass"><CheckCircle2 className="w-2.5 h-2.5" />合格</span></td></tr>
+   953→                  </tbody>
+   954→                </table>
+   955→              </div>
+   956→            </div>
+   957→          )}
+   958→          <DialogFooter>
+   959→            <DialogClose asChild>
+   960→              <button className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">关闭</button>
+   961→            </DialogClose>
+   962→          </DialogFooter>
+   963→        </DialogContent>
+   964→      </Dialog>
+   965→    </div>
+   966→  )
+   967→}
+   968→
+   969→/* ---------- 3. 半成品测试 ---------- */
+   970→function SemiTestPage() {
+   971→  const passCount = testRecords.filter(r => r.result === 'pass').length
+   972→  const failCount = testRecords.filter(r => r.result === 'fail').length
+   973→  const [testReportOpen, setTestReportOpen] = useState(false)
+   974→  const [selectedRecord, setSelectedRecord] = useState<typeof testRecords[0] | null>(null)
+   975→  const [connected, setConnected] = useState(true)
+   976→  const [searchTerm, setSearchTerm] = useState('')
+   977→  const filteredRecords = testRecords.filter(r =>
+   978→    r.pcb.includes(searchTerm) || r.sn.includes(searchTerm) || r.productModel.includes(searchTerm) || r.operator.includes(searchTerm)
+   979→  )
+   980→  return (
+   981→    <div className="space-y-5">
+   982→      {/* 连接状态 */}
+   983→      <div className={`connection-banner ${connected ? 'connected' : 'disconnected'}`}>
+   984→        <div className={`connection-dot ${connected ? 'connected' : 'disconnected'}`} />
+   985→        <span>{connected ? '测试机已连接' : '测试机未连接'}</span>
+   986→        {connected ? <Wifi className="w-4 h-4 ml-1" /> : <WifiOff className="w-4 h-4 ml-1" />}
+   987→        <button onClick={() => setConnected(!connected)} className="ml-auto text-xs px-3 py-1 rounded-lg border border-current/20 hover:bg-white/50 transition-colors">
+   988→          {connected ? '断开模拟' : '重连模拟'}
+   989→        </button>
+   990→      </div>
+   991→      {/* 统计卡片 */}
+   992→      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+   993→        {[
+   994→          { label: '测试总数', value: testRecords.length, unit: '台', color: '#0891b2', bg: 'bg-cyan-50', icon: TestTube2 },
+   995→          { label: '通过数量', value: passCount, unit: '台', color: '#059669', bg: 'bg-emerald-50', icon: CheckCircle2 },
+   996→          { label: '异常数量', value: failCount, unit: '台', color: '#e11d48', bg: 'bg-rose-50', icon: XCircle },
+   997→          { label: '通过率', value: Math.round(passCount / testRecords.length * 100), unit: '%', color: '#7c3aed', bg: 'bg-violet-50', icon: Target },
+   998→        ].map((s, i) => (
+   999→          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+  1000→            className={`dash-card p-4 flex items-center gap-4`}>
+  1001→            <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}>
+  1002→              <s.icon className="w-6 h-6" style={{ color: s.color }} />
+  1003→            </div>
+  1004→            <div>
+  1005→              <div className="text-2xl font-bold" style={{ color: s.color }}>{s.value}<span className="text-sm font-normal text-slate-400 ml-0.5">{s.unit}</span></div>
+  1006→              <div className="text-xs text-slate-500">{s.label}</div>
+  1007→            </div>
+  1008→          </motion.div>
+  1009→        ))}
+  1010→      </div>
+  1011→      {/* 正在测试 */}
+  1012→      <SectionCard title="正在测试" icon={<Activity className="w-5 h-5 text-cyan-600" />}>
+  1013→        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  1014→          {semiTestingData.map((item, i) => (
+  1015→            <motion.div key={item.sn} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className="testing-item-card">
+  1016→              <div className="flex items-center justify-between mb-3">
+  1017→                <div className="flex items-center gap-2">
+  1018→                  <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
+  1019→                    <TestTube2 className="w-4 h-4 text-cyan-600" />
+  1020→                  </div>
+  1021→                  <div>
+  1022→                    <div className="font-mono font-semibold text-sm text-slate-700">{item.sn}</div>
+  1023→                    <div className="text-xs text-slate-500">{item.testItem}</div>
+  1024→                  </div>
+  1025→                </div>
+  1026→                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+  1027→                  <Timer className="w-3.5 h-3.5 text-cyan-500" />
+  1028→                  <span className="font-mono">{item.elapsed}</span>
+  1029→                </div>
+  1030→              </div>
+  1031→              <div className="progress-bar-track">
+  1032→                <div className="progress-bar-fill" style={{ width: `${item.progress}%`, background: `linear-gradient(90deg, #0891b2, #06b6d4)` }} />
+  1033→              </div>
+  1034→              <div className="flex justify-between mt-1.5 text-[10px] text-slate-400">
+  1035→                <span>测试进度</span>
+  1036→                <span className="font-semibold text-cyan-600">{item.progress}%</span>
+  1037→              </div>
+  1038→            </motion.div>
+  1039→          ))}
+  1040→        </div>
+  1041→      </SectionCard>
+  1042→      {/* 搜索 */}
+  1043→      <SectionCard title="已完成测试记录" icon={<FlaskConical className="w-5 h-5 text-cyan-600" />}>
+  1044→        <div className="mb-4">
+  1045→          <div className="relative inline-block">
+  1046→            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+  1047→            <input type="text" placeholder="搜索主板二维码 / SN码 / 成品型号 / 操作员" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+  1048→              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all w-80" />
+  1049→          </div>
+  1050→        </div>
+  1051→        <div className="overflow-x-auto rounded-lg border border-slate-200">
+  1052→          <table className="data-table">
+  1053→            <thead><tr><th>主板二维码</th><th>成品型号</th><th>过充</th><th>过流</th><th>操作员</th><th>测试时间</th><th>测试结果</th><th>操作</th></tr></thead>
+  1054→            <tbody>
+  1055→              {filteredRecords.map((r, i) => (
+  1056→                <tr key={i}>
+  1057→                  <td className="font-mono text-xs text-slate-500">{r.pcb}</td>
+  1058→                  <td className="text-slate-700 font-medium">{r.productModel}</td>
+  1059→                  <td className={r.overcharge > '4.25V' ? 'text-rose-600 font-semibold' : 'text-slate-600'}>{r.overcharge}</td>
+  1060→                  <td className={r.overcurrent > '2.5A' ? 'text-rose-600 font-semibold' : 'text-slate-600'}>{r.overcurrent}</td>
+  1061→                  <td className="text-slate-600">{r.operator}</td>
+  1062→                  <td className="text-slate-500">{r.time}</td>
+  1063→                  <td><span className={r.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{r.result === 'pass' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{r.result === 'pass' ? '准许入库' : '异常隔离'}</span></td>
+  1064→                  <td><button onClick={() => { setSelectedRecord(r); setTestReportOpen(true) }} className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium"><FileText className="w-3.5 h-3.5" />测试报告</button></td>
+  1065→                </tr>
+  1066→              ))}
+  1067→            </tbody>
+  1068→          </table>
+  1069→        </div>
+  1070→      </SectionCard>
+  1071→
+  1072→      {/* 半成品测试报告弹窗 */}
+  1073→      <Dialog open={testReportOpen} onOpenChange={setTestReportOpen}>
+  1074→        <DialogContent className="sm:max-w-[650px] bg-white">
+  1075→          <DialogHeader>
+  1076→            <DialogTitle className="flex items-center gap-2 text-slate-800">
+  1077→              <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
+  1078→                <FileText className="w-4 h-4 text-cyan-600" />
+  1079→              </div>
+  1080→              半成品测试报告
+  1081→            </DialogTitle>
+  1082→            <DialogDescription className="text-slate-500">半成品出厂检测报告详情</DialogDescription>
+  1083→          </DialogHeader>
+  1084→          {selectedRecord && (
+  1085→            <div className="py-4 space-y-4">
+  1086→              {/* 设备信息 */}
+  1087→              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+  1088→                <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-cyan-500" />设备信息</h4>
+  1089→                <div className="grid grid-cols-2 gap-3 text-xs">
+  1090→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">主板二维码:</span><span className="font-mono text-slate-700">{selectedRecord.pcb}</span></div>
+  1091→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">成品型号:</span><span className="text-slate-700 font-medium">{selectedRecord.productModel}</span></div>
+  1092→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">操作员:</span><span className="text-slate-700">{selectedRecord.operator}</span></div>
+  1093→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">测试时间:</span><span className="text-slate-700">{selectedRecord.time}</span></div>
+  1094→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">测试结果:</span><span className={selectedRecord.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.result === 'pass' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{selectedRecord.result === 'pass' ? '准许入库' : '异常隔离'}</span></div>
+  1095→                </div>
+  1096→              </div>
+  1097→              {/* 测试项明细 */}
+  1098→              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+  1099→                <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-emerald-500" />测试项明细</h4>
+  1100→                <table className="w-full text-xs">
+  1101→                  <thead><tr className="border-b border-slate-200"><th className="text-left py-2 text-slate-500 font-semibold">测试项目</th><th className="text-left py-2 text-slate-500 font-semibold">标准值</th><th className="text-left py-2 text-slate-500 font-semibold">实测值</th><th className="text-left py-2 text-slate-500 font-semibold">结果</th></tr></thead>
+  1102→                  <tbody>
+  1103→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">过充保护</td><td className="py-2 text-slate-500">4.25V ±0.05V</td><td className="py-2 text-slate-700">{selectedRecord.overcharge}</td><td className="py-2"><span className={selectedRecord.overcharge <= '4.25V' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.overcharge <= '4.25V' ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}{selectedRecord.overcharge <= '4.25V' ? '合格' : '不合格'}</span></td></tr>
+  1104→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">过流保护</td><td className="py-2 text-slate-500">≤2.5A</td><td className="py-2 text-slate-700">{selectedRecord.overcurrent}</td><td className="py-2"><span className={selectedRecord.overcurrent <= '2.5A' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.overcurrent <= '2.5A' ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}{selectedRecord.overcurrent <= '2.5A' ? '合格' : '不合格'}</span></td></tr>
+  1105→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">过放保护</td><td className="py-2 text-slate-500">2.40V ±0.05V</td><td className="py-2 text-slate-700">{selectedRecord.result === 'pass' ? '2.42V' : '2.10V'}</td><td className="py-2"><span className={selectedRecord.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.result === 'pass' ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}{selectedRecord.result === 'pass' ? '合格' : '不合格'}</span></td></tr>
+  1106→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">短路保护</td><td className="py-2 text-slate-500">≤10ms 断开</td><td className="py-2 text-slate-700">8ms</td><td className="py-2"><span className="badge-pass"><CheckCircle2 className="w-2.5 h-2.5" />合格</span></td></tr>
+  1107→                    <tr><td className="py-2 text-slate-700">内阻测试</td><td className="py-2 text-slate-500">≤50mΩ</td><td className="py-2 text-slate-700">{selectedRecord.result === 'pass' ? '32mΩ' : '78mΩ'}</td><td className="py-2"><span className={selectedRecord.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.result === 'pass' ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}{selectedRecord.result === 'pass' ? '合格' : '不合格'}</span></td></tr>
+  1108→                  </tbody>
+  1109→                </table>
+  1110→              </div>
+  1111→              {/* 综合判定 */}
+  1112→              <div className={`rounded-lg p-4 border ${selectedRecord.result === 'pass' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+  1113→                <div className="flex items-center gap-3">
+  1114→                  {selectedRecord.result === 'pass' ? <CheckCircle2 className="w-6 h-6 text-emerald-600" /> : <XCircle className="w-6 h-6 text-rose-600" />}
+  1115→                  <div>
+  1116→                    <div className={`text-sm font-bold ${selectedRecord.result === 'pass' ? 'text-emerald-700' : 'text-rose-700'}`}>{selectedRecord.result === 'pass' ? '综合判定：合格' : '综合判定：不合格'}</div>
+  1117→                    <div className="text-xs text-slate-500 mt-0.5">{selectedRecord.result === 'pass' ? '所有测试项目均在标准范围内，准许入库' : '存在测试项目超出标准范围，需异常隔离处理'}</div>
+  1118→                  </div>
+  1119→                </div>
+  1120→              </div>
+  1121→            </div>
+  1122→          )}
+  1123→          <DialogFooter>
+  1124→            <DialogClose asChild>
+  1125→              <button className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">关闭</button>
+  1126→            </DialogClose>
+  1127→          </DialogFooter>
+  1128→        </DialogContent>
+  1129→      </Dialog>
+  1130→    </div>
+  1131→  )
+  1132→}
+  1133→
+  1134→/* ---------- 4. 成品测试 ---------- */
+  1135→function ProductTestPage() {
+  1136→  const passCount = testRecords.filter(r => r.result === 'pass').length
+  1137→  const failCount = testRecords.filter(r => r.result === 'fail').length
+  1138→  const [testReportOpen, setTestReportOpen] = useState(false)
+  1139→  const [selectedRecord, setSelectedRecord] = useState<typeof testRecords[0] | null>(null)
+  1140→  const [connected, setConnected] = useState(true)
+  1141→  const [searchTerm, setSearchTerm] = useState('')
+  1142→  const filteredRecords = testRecords.filter(r =>
+  1143→    r.pcb.includes(searchTerm) || r.sn.includes(searchTerm) || r.productModel.includes(searchTerm) || r.operator.includes(searchTerm)
+  1144→  )
+  1145→  return (
+  1146→    <div className="space-y-5">
+  1147→      {/* 连接状态 */}
+  1148→      <div className={`connection-banner ${connected ? 'connected' : 'disconnected'}`}>
+  1149→        <div className={`connection-dot ${connected ? 'connected' : 'disconnected'}`} />
+  1150→        <span>{connected ? '测试机已连接' : '测试机未连接'}</span>
+  1151→        {connected ? <Wifi className="w-4 h-4 ml-1" /> : <WifiOff className="w-4 h-4 ml-1" />}
+  1152→        <button onClick={() => setConnected(!connected)} className="ml-auto text-xs px-3 py-1 rounded-lg border border-current/20 hover:bg-white/50 transition-colors">
+  1153→          {connected ? '断开模拟' : '重连模拟'}
+  1154→        </button>
+  1155→      </div>
+  1156→      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  1157→        {[
+  1158→          { label: '测试总数', value: testRecords.length, unit: '台', color: '#0891b2', bg: 'bg-cyan-50', icon: Activity },
+  1159→          { label: '通过数量', value: passCount, unit: '台', color: '#059669', bg: 'bg-emerald-50', icon: CheckCircle2 },
+  1160→          { label: '异常数量', value: failCount, unit: '台', color: '#e11d48', bg: 'bg-rose-50', icon: XCircle },
+  1161→          { label: '通过率', value: Math.round(passCount / testRecords.length * 100), unit: '%', color: '#7c3aed', bg: 'bg-violet-50', icon: Target },
+  1162→        ].map((s, i) => (
+  1163→          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+  1164→            className="dash-card p-4 flex items-center gap-4">
+  1165→            <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}>
+  1166→              <s.icon className="w-6 h-6" style={{ color: s.color }} />
+  1167→            </div>
+  1168→            <div>
+  1169→              <div className="text-2xl font-bold" style={{ color: s.color }}>{s.value}<span className="text-sm font-normal text-slate-400 ml-0.5">{s.unit}</span></div>
+  1170→              <div className="text-xs text-slate-500">{s.label}</div>
+  1171→            </div>
+  1172→          </motion.div>
+  1173→        ))}
+  1174→      </div>
+  1175→      {/* 正在测试 */}
+  1176→      <SectionCard title="正在测试" icon={<Activity className="w-5 h-5 text-violet-600" />}>
+  1177→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  1178→          {productTestingData.map((item, i) => (
+  1179→            <motion.div key={item.sn} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className="testing-item-card">
+  1180→              <div className="flex items-center justify-between mb-3">
+  1181→                <div className="flex items-center gap-2">
+  1182→                  <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+  1183→                    <Activity className="w-4 h-4 text-violet-600" />
+  1184→                  </div>
+  1185→                  <div>
+  1186→                    <div className="font-mono font-semibold text-sm text-slate-700">{item.sn}</div>
+  1187→                    <div className="text-xs text-slate-500">{item.testItem}</div>
+  1188→                  </div>
+  1189→                </div>
+  1190→                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+  1191→                  <Timer className="w-3.5 h-3.5 text-violet-500" />
+  1192→                  <span className="font-mono">{item.elapsed}</span>
+  1193→                </div>
+  1194→              </div>
+  1195→              <div className="progress-bar-track">
+  1196→                <div className="progress-bar-fill" style={{ width: `${item.progress}%`, background: `linear-gradient(90deg, #7c3aed, #a78bfa)` }} />
+  1197→              </div>
+  1198→              <div className="flex justify-between mt-1.5 text-[10px] text-slate-400">
+  1199→                <span>测试进度</span>
+  1200→                <span className="font-semibold text-violet-600">{item.progress}%</span>
+  1201→              </div>
+  1202→            </motion.div>
+  1203→          ))}
+  1204→        </div>
+  1205→      </SectionCard>
+  1206→      <SectionCard title="已完成测试记录" icon={<BarChart2 className="w-5 h-5 text-violet-600" />}>
+  1207→        <div className="mb-4">
+  1208→          <div className="relative inline-block">
+  1209→            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+  1210→            <input type="text" placeholder="搜索主板二维码 / SN码 / 成品型号" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+  1211→              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all w-72" />
+  1212→          </div>
+  1213→        </div>
+  1214→        <div className="overflow-x-auto rounded-lg border border-slate-200">
+  1215→          <table className="data-table">
+  1216→            <thead><tr><th>机柜 SN 码</th><th>主板二维码</th><th>电芯二维码</th><th>操作员</th><th>测试时间</th><th>测试结果</th><th>操作</th></tr></thead>
+  1217→            <tbody>
+  1218→              {filteredRecords.map((r, i) => (
+  1219→                <tr key={i}>
+  1220→                  <td className="font-mono font-semibold text-slate-700">{r.sn}</td>
+  1221→                  <td className="font-mono text-xs text-slate-500">{r.pcb}</td>
+  1222→                  <td className="font-mono text-xs text-slate-500">{r.cell}</td>
+  1223→                  <td className="text-slate-600">{r.operator}</td>
+  1224→                  <td className="text-slate-500">{r.time}</td>
+  1225→                  <td><span className={r.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{r.result === 'pass' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{r.result === 'pass' ? '准许入库' : '异常隔离'}</span></td>
+  1226→                  <td><button onClick={() => { setSelectedRecord(r); setTestReportOpen(true) }} className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium"><FileText className="w-3.5 h-3.5" />测试报告</button></td>
+  1227→                </tr>
+  1228→              ))}
+  1229→            </tbody>
+  1230→          </table>
+  1231→        </div>
+  1232→      </SectionCard>
+  1233→
+  1234→      {/* 成品测试报告弹窗 */}
+  1235→      <Dialog open={testReportOpen} onOpenChange={setTestReportOpen}>
+  1236→        <DialogContent className="sm:max-w-[650px] bg-white">
+  1237→          <DialogHeader>
+  1238→            <DialogTitle className="flex items-center gap-2 text-slate-800">
+  1239→              <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+  1240→                <FileText className="w-4 h-4 text-violet-600" />
+  1241→              </div>
+  1242→              成品测试报告
+  1243→            </DialogTitle>
+  1244→            <DialogDescription className="text-slate-500">成品出厂检测报告详情</DialogDescription>
+  1245→          </DialogHeader>
+  1246→          {selectedRecord && (
+  1247→            <div className="py-4 space-y-4">
+  1248→              {/* 设备信息 */}
+  1249→              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+  1250→                <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-violet-500" />设备信息</h4>
+  1251→                <div className="grid grid-cols-2 gap-3 text-xs">
+  1252→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">机柜SN码:</span><span className="font-mono font-semibold text-slate-700">{selectedRecord.sn}</span></div>
+  1253→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">主板二维码:</span><span className="font-mono text-slate-700">{selectedRecord.pcb}</span></div>
+  1254→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">电芯二维码:</span><span className="font-mono text-slate-700">{selectedRecord.cell}</span></div>
+  1255→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">操作员:</span><span className="text-slate-700">{selectedRecord.operator}</span></div>
+  1256→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">测试时间:</span><span className="text-slate-700">{selectedRecord.time}</span></div>
+  1257→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-20">测试结果:</span><span className={selectedRecord.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.result === 'pass' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{selectedRecord.result === 'pass' ? '准许入库' : '异常隔离'}</span></div>
+  1258→                </div>
+  1259→              </div>
+  1260→              {/* 测试项明细 */}
+  1261→              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+  1262→                <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-emerald-500" />测试项明细</h4>
+  1263→                <table className="w-full text-xs">
+  1264→                  <thead><tr className="border-b border-slate-200"><th className="text-left py-2 text-slate-500 font-semibold">测试项目</th><th className="text-left py-2 text-slate-500 font-semibold">标准值</th><th className="text-left py-2 text-slate-500 font-semibold">实测值</th><th className="text-left py-2 text-slate-500 font-semibold">结果</th></tr></thead>
+  1265→                  <tbody>
+  1266→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">满充容量</td><td className="py-2 text-slate-500">≥10000mAh</td><td className="py-2 text-slate-700">{selectedRecord.result === 'pass' ? '10250mAh' : '9600mAh'}</td><td className="py-2"><span className={selectedRecord.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.result === 'pass' ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}{selectedRecord.result === 'pass' ? '合格' : '不合格'}</span></td></tr>
+  1267→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">循环寿命</td><td className="py-2 text-slate-500">≥500次</td><td className="py-2 text-slate-700">520次</td><td className="py-2"><span className="badge-pass"><CheckCircle2 className="w-2.5 h-2.5" />合格</span></td></tr>
+  1268→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">自耗电测试</td><td className="py-2 text-slate-500">≤3%/月</td><td className="py-2 text-slate-700">{selectedRecord.result === 'pass' ? '2.1%' : '5.8%'}</td><td className="py-2"><span className={selectedRecord.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.result === 'pass' ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}{selectedRecord.result === 'pass' ? '合格' : '不合格'}</span></td></tr>
+  1269→                    <tr className="border-b border-slate-100"><td className="py-2 text-slate-700">温升测试</td><td className="py-2 text-slate-500">≤10°C</td><td className="py-2 text-slate-700">7°C</td><td className="py-2"><span className="badge-pass"><CheckCircle2 className="w-2.5 h-2.5" />合格</span></td></tr>
+  1270→                    <tr><td className="py-2 text-slate-700">BMS通信</td><td className="py-2 text-slate-500">正常响应</td><td className="py-2 text-slate-700">正常</td><td className="py-2"><span className="badge-pass"><CheckCircle2 className="w-2.5 h-2.5" />合格</span></td></tr>
+  1271→                  </tbody>
+  1272→                </table>
+  1273→              </div>
+  1274→              {/* 综合判定 */}
+  1275→              <div className={`rounded-lg p-4 border ${selectedRecord.result === 'pass' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+  1276→                <div className="flex items-center gap-3">
+  1277→                  {selectedRecord.result === 'pass' ? <CheckCircle2 className="w-6 h-6 text-emerald-600" /> : <XCircle className="w-6 h-6 text-rose-600" />}
+  1278→                  <div>
+  1279→                    <div className={`text-sm font-bold ${selectedRecord.result === 'pass' ? 'text-emerald-700' : 'text-rose-700'}`}>{selectedRecord.result === 'pass' ? '综合判定：合格' : '综合判定：不合格'}</div>
+  1280→                    <div className="text-xs text-slate-500 mt-0.5">{selectedRecord.result === 'pass' ? '所有成品检测项目均在标准范围内，准许入库' : '存在检测项目超出标准范围，需异常隔离处理'}</div>
+  1281→                  </div>
+  1282→                </div>
+  1283→              </div>
+  1284→            </div>
+  1285→          )}
+  1286→          <DialogFooter>
+  1287→            <DialogClose asChild>
+  1288→              <button className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">关闭</button>
+  1289→            </DialogClose>
+  1290→          </DialogFooter>
+  1291→        </DialogContent>
+  1292→      </Dialog>
+  1293→    </div>
+  1294→  )
+  1295→}
+  1296→
+  1297→/* ---------- 5. 设备装箱 ---------- */
+  1298→function PackagingPage() {
+  1299→  const [expandedRow, setExpandedRow] = useState<number | null>(null)
+  1300→  const [dataEntryOpen, setDataEntryOpen] = useState(false)
+  1301→  return (
+  1302→    <div className="space-y-5">
+  1303→      {/* 统计卡片 */}
+  1304→      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+  1305→        {[
+  1306→          { label: '已装总箱数', value: 15600, unit: '箱', color: '#d97706', bg: 'bg-amber-50', icon: Box },
+  1307→          { label: '已装机柜数', value: 15600, unit: '台', color: '#0891b2', bg: 'bg-cyan-50', icon: Database },
+  1308→          { label: 'OID 备案率', value: 100, unit: '%', color: '#059669', bg: 'bg-emerald-50', icon: Shield },
+  1309→        ].map((s, i) => (
+  1310→          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+  1311→            className="dash-card p-4 flex items-center gap-4">
+  1312→            <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}>
+  1313→              <s.icon className="w-6 h-6" style={{ color: s.color }} />
+  1314→            </div>
+  1315→            <div>
+  1316→              <div className="text-2xl font-bold" style={{ color: s.color }}>{s.value.toLocaleString()}<span className="text-sm font-normal text-slate-400 ml-0.5">{s.unit}</span></div>
+  1317→              <div className="text-xs text-slate-500">{s.label}</div>
+  1318→            </div>
+  1319→          </motion.div>
+  1320→        ))}
+  1321→      </div>
+  1322→      {/* 表格 */}
+  1323→      <SectionCard title="出厂备案与装箱关联" icon={<Truck className="w-5 h-5 text-amber-600" />}
+  1324→        action={<button onClick={() => setDataEntryOpen(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm"><Plus className="w-4 h-4" /> 数据录入</button>}
+  1325→      >
+  1326→        <div className="mb-4">
+  1327→          <div className="relative inline-block">
+  1328→            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+  1329→            <input type="text" placeholder="装箱批次码 / 设备编号" className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all w-64" />
+  1330→          </div>
+  1331→        </div>
+  1332→        <div className="overflow-x-auto rounded-lg border border-slate-200">
+  1333→          <table className="data-table">
+  1334→            <thead><tr><th>外箱批次码</th><th>包含单品数量</th><th>3C 认证编号</th><th>OID 监管状态</th><th>操作员</th><th>装箱日期</th><th>生产单编号</th><th>型号</th><th>操作</th></tr></thead>
+  1335→            <tbody>
+  1336→              {packagingRecords.map((r, i) => (
+  1337→                <>
+  1338→                  <tr key={i}>
+  1339→                    <td className="font-mono font-semibold text-slate-700">{r.batch}</td>
+  1340→                    <td className="font-semibold">{r.count} 台</td>
+  1341→                    <td className="font-mono text-xs text-slate-500">{r.cert3c}</td>
+  1342→                    <td><span className="badge-synced"><CheckCircle2 className="w-3 h-3" />{r.oidStatus}</span></td>
+  1343→                    <td>{r.operator}</td>
+  1344→                    <td className="text-slate-500">{r.date}</td>
+  1345→                    <td className="font-mono text-xs text-cyan-600">{r.workOrder}</td>
+  1346→                    <td className="text-slate-700">{r.model}</td>
+  1347→                    <td><button onClick={() => setExpandedRow(expandedRow === i ? null : i)}
+  1348→                      className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium">
+  1349→                      <ChevronRight className={`w-3.5 h-3.5 transition-transform ${expandedRow === i ? 'rotate-90' : ''}`} />子件编号
+  1350→                    </button></td>
+  1351→                  </tr>
+  1352→                  {expandedRow === i && (
+  1353→                    <tr key={`sub-${i}`}>
+  1354→                      <td colSpan={9} className="bg-slate-50/60 px-8 py-3">
+  1355→                        <div className="text-xs text-slate-500 mb-2 font-medium">子件编号列表 ({r.subs.length} 件)</div>
+  1356→                        <div className="flex flex-wrap gap-2">
+  1357→                          {r.subs.map((sub, si) => (
+  1358→                            <span key={si} className="px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-mono text-slate-600 shadow-sm">{sub}</span>
+  1359→                          ))}
+  1360→                        </div>
+  1361→                      </td>
+  1362→                    </tr>
+  1363→                  )}
+  1364→                </>
+  1365→              ))}
+  1366→            </tbody>
+  1367→          </table>
+  1368→        </div>
+  1369→      </SectionCard>
+  1370→
+  1371→      {/* 数据录入弹窗 */}
+  1372→      <Dialog open={dataEntryOpen} onOpenChange={setDataEntryOpen}>
+  1373→        <DialogContent className="sm:max-w-[600px] bg-white">
+  1374→          <DialogHeader>
+  1375→            <DialogTitle className="flex items-center gap-2 text-slate-800">
+  1376→              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+  1377→                <Plus className="w-4 h-4 text-amber-600" />
+  1378→              </div>
+  1379→              装箱数据录入
+  1380→            </DialogTitle>
+  1381→            <DialogDescription className="text-slate-500">请填写装箱关联信息并提交备案</DialogDescription>
+  1382→          </DialogHeader>
+  1383→          <div className="grid grid-cols-2 gap-4 py-4">
+  1384→            <div className="space-y-2">
+  1385→              <label className="text-xs font-semibold text-slate-700">外箱批次码 <span className="text-rose-500">*</span></label>
+  1386→              <input type="text" placeholder="例如：BOX-20231024-003" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all" />
+  1387→            </div>
+  1388→            <div className="space-y-2">
+  1389→              <label className="text-xs font-semibold text-slate-700">包含单品数量 <span className="text-rose-500">*</span></label>
+  1390→              <input type="number" placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all" />
+  1391→            </div>
+  1392→            <div className="space-y-2">
+  1393→              <label className="text-xs font-semibold text-slate-700">3C 认证编号</label>
+  1394→              <input type="text" placeholder="例如：202001090729XXXX" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all" />
+  1395→            </div>
+  1396→            <div className="space-y-2">
+  1397→              <label className="text-xs font-semibold text-slate-700">OID 监管状态</label>
+  1398→              <select className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all bg-white">
+  1399→                <option>待同步备案</option>
+  1400→                <option>已同步备案</option>
+  1401→              </select>
+  1402→            </div>
+  1403→            <div className="space-y-2">
+  1404→              <label className="text-xs font-semibold text-slate-700">操作员</label>
+  1405→              <input type="text" placeholder="当前登录用户" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all bg-slate-50" readOnly />
+  1406→            </div>
+  1407→            <div className="space-y-2">
+  1408→              <label className="text-xs font-semibold text-slate-700">装箱日期</label>
+  1409→              <input type="datetime-local" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all" />
+  1410→            </div>
+  1411→          </div>
+  1412→          <div className="space-y-2 pb-2">
+  1413→            <label className="text-xs font-semibold text-slate-700">子件编号（多个编号用逗号分隔）</label>
+  1414→            <textarea rows={3} placeholder="SN-SUB-8839201901, SN-SUB-8839201902, ..." className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all resize-none" />
+  1415→          </div>
+  1416→          <DialogFooter className="gap-2">
+  1417→            <DialogClose asChild>
+  1418→              <button className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">取消</button>
+  1419→            </DialogClose>
+  1420→            <button onClick={() => setDataEntryOpen(false)} className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm">
+  1421→              <Save className="w-4 h-4" /> 提交录入
+  1422→            </button>
+  1423→          </DialogFooter>
+  1424→        </DialogContent>
+  1425→      </Dialog>
+  1426→    </div>
+  1427→  )
+  1428→}
+  1429→
+  1430→
+  1431→/* ---------- 6. 电芯派克 ---------- */
+  1432→function CellPackTestPage() {
+  1433→  const [connected, setConnected] = useState(true)
+  1434→  const [testReportOpen, setTestReportOpen] = useState(false)
+  1435→  const [selectedRecord, setSelectedRecord] = useState<typeof cellPackCompletedData[0] | null>(null)
+  1436→  const [searchTerm, setSearchTerm] = useState('')
+  1437→  const filteredCompleted = cellPackCompletedData.filter(r =>
+  1438→    r.sn.includes(searchTerm) || r.brand.includes(searchTerm) || r.productModel.includes(searchTerm) || r.workOrder.includes(searchTerm)
+  1439→  )
+  1440→  return (
+  1441→    <div className="space-y-5">
+  1442→      {/* 连接状态 */}
+  1443→      <div className={`connection-banner ${connected ? 'connected' : 'disconnected'}`}>
+  1444→        <div className={`connection-dot ${connected ? 'connected' : 'disconnected'}`} />
+  1445→        <span>{connected ? '派克测试机已连接' : '派克测试机未连接'}</span>
+  1446→        {connected ? <Wifi className="w-4 h-4 ml-1" /> : <WifiOff className="w-4 h-4 ml-1" />}
+  1447→        <button onClick={() => setConnected(!connected)} className="ml-auto text-xs px-3 py-1 rounded-lg border border-current/20 hover:bg-white/50 transition-colors">
+  1448→          {connected ? '断开模拟' : '重连模拟'}
+  1449→        </button>
+  1450→      </div>
+  1451→      {/* 统计卡片 */}
+  1452→      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  1453→        {[
+  1454→          { label: '正在测试', value: cellPackTestingData.length, unit: '个', color: '#0891b2', bg: 'bg-cyan-50', icon: BatteryCharging },
+  1455→          { label: '已完成测试', value: cellPackCompletedData.length, unit: '个', color: '#059669', bg: 'bg-emerald-50', icon: CheckCircle2 },
+  1456→          { label: '合格数量', value: cellPackCompletedData.filter(r => r.result === 'pass').length, unit: '个', color: '#7c3aed', bg: 'bg-violet-50', icon: Target },
+  1457→          { label: '异常数量', value: cellPackCompletedData.filter(r => r.result === 'fail').length, unit: '个', color: '#e11d48', bg: 'bg-rose-50', icon: XCircle },
+  1458→        ].map((s, i) => (
+  1459→          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+  1460→            className="dash-card p-4 flex items-center gap-4">
+  1461→            <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}>
+  1462→              <s.icon className="w-6 h-6" style={{ color: s.color }} />
+  1463→            </div>
+  1464→            <div>
+  1465→              <div className="text-2xl font-bold" style={{ color: s.color }}>{s.value}<span className="text-sm font-normal text-slate-400 ml-0.5">{s.unit}</span></div>
+  1466→              <div className="text-xs text-slate-500">{s.label}</div>
+  1467→            </div>
+  1468→          </motion.div>
+  1469→        ))}
+  1470→      </div>
+  1471→      {/* 正在测试 */}
+  1472→      <SectionCard title="正在测试" icon={<BatteryCharging className="w-5 h-5 text-cyan-600" />}>
+  1473→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  1474→          {cellPackTestingData.map((item, i) => (
+  1475→            <motion.div key={item.sn} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }} className="testing-item-card">
+  1476→              <div className="flex items-center justify-between mb-3">
+  1477→                <div className="flex items-center gap-2">
+  1478→                  <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
+  1479→                    <BatteryCharging className="w-4 h-4 text-cyan-600" />
+  1480→                  </div>
+  1481→                  <div>
+  1482→                    <div className="font-mono font-semibold text-sm text-slate-700">{item.sn}</div>
+  1483→                    <div className="text-xs text-slate-500">{item.testItem}</div>
+  1484→                  </div>
+  1485→                </div>
+  1486→                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+  1487→                  <Timer className="w-3.5 h-3.5 text-cyan-500" />
+  1488→                  <span className="font-mono">{item.elapsed}</span>
+  1489→                </div>
+  1490→              </div>
+  1491→              <div className="grid grid-cols-3 gap-3 mb-3">
+  1492→                <div className="text-center p-2 bg-slate-50 rounded-lg">
+  1493→                  <div className="text-xs text-slate-500 mb-0.5">电压</div>
+  1494→                  <div className="text-sm font-bold text-cyan-600">{item.voltage}V</div>
+  1495→                </div>
+  1496→                <div className="text-center p-2 bg-slate-50 rounded-lg">
+  1497→                  <div className="text-xs text-slate-500 mb-0.5">电流</div>
+  1498→                  <div className="text-sm font-bold text-violet-600">{item.current}A</div>
+  1499→                </div>
+  1500→                <div className="text-center p-2 bg-slate-50 rounded-lg">
+  1501→                  <div className="text-xs text-slate-500 mb-0.5">温度</div>
+  1502→                  <div className={`text-sm font-bold ${item.temperature > 35 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.temperature}°C</div>
+  1503→                </div>
+  1504→              </div>
+  1505→              <div className="progress-bar-track">
+  1506→                <div className="progress-bar-fill" style={{ width: `${item.progress}%`, background: `linear-gradient(90deg, #0891b2, #06b6d4)` }} />
+  1507→              </div>
+  1508→              <div className="flex justify-between mt-1.5 text-[10px] text-slate-400">
+  1509→                <span>测试进度</span>
+  1510→                <span className="font-semibold text-cyan-600">{item.progress}%</span>
+  1511→              </div>
+  1512→            </motion.div>
+  1513→          ))}
+  1514→        </div>
+  1515→      </SectionCard>
+  1516→      {/* 已完成测试 */}
+  1517→      <SectionCard title="已完成测试记录" icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}>
+  1518→        <div className="mb-4">
+  1519→          <div className="relative inline-block">
+  1520→            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+  1521→            <input type="text" placeholder="搜索SN码 / 品牌 / 成品型号 / 工单" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+  1522→              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all w-80" />
+  1523→          </div>
+  1524→        </div>
+  1525→        <div className="overflow-x-auto rounded-lg border border-slate-200">
+  1526→          <table className="data-table">
+  1527→            <thead><tr><th>电芯 SN 码</th><th>电压</th><th>温度</th><th>测试结果</th><th>测试时长</th><th>测试时间</th><th>品牌</th><th>型号</th><th>类型</th><th>成品型号</th><th>生产工单编号</th><th>操作</th></tr></thead>
+  1528→            <tbody>
+  1529→              {filteredCompleted.map((r, i) => (
+  1530→                <tr key={i}>
+  1531→                  <td className="font-mono font-semibold text-slate-700">{r.sn}</td>
+  1532→                  <td className="font-semibold" style={{ color: r.voltage >= 3.7 ? '#059669' : '#e11d48' }}>{r.voltage}V</td>
+  1533→                  <td className={r.temperature > 38 ? 'text-rose-600 font-semibold' : 'text-slate-600'}>{r.temperature}°C</td>
+  1534→                  <td><span className={r.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{r.result === 'pass' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{r.result === 'pass' ? '合格' : '不合格'}</span></td>
+  1535→                  <td className="text-slate-500 font-mono text-xs">{r.duration}</td>
+  1536→                  <td className="text-slate-500 text-xs whitespace-nowrap">{r.testTime}</td>
+  1537→                  <td className="text-slate-700">{r.brand}</td>
+  1538→                  <td className="font-mono text-xs text-slate-500">{r.model}</td>
+  1539→                  <td><span className="text-xs px-2 py-0.5 rounded font-medium bg-violet-50 text-violet-700">{r.type}</span></td>
+  1540→                  <td className="text-slate-700 font-medium">{r.productModel}</td>
+  1541→                  <td className="font-mono text-xs text-cyan-600">{r.workOrder}</td>
+  1542→                  <td><button onClick={() => { setSelectedRecord(r); setTestReportOpen(true) }} className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium"><FileText className="w-3.5 h-3.5" />测试报告</button></td>
+  1543→                </tr>
+  1544→              ))}
+  1545→            </tbody>
+  1546→          </table>
+  1547→        </div>
+  1548→      </SectionCard>
+  1549→      {/* 测试报告弹窗 */}
+  1550→      <Dialog open={testReportOpen} onOpenChange={setTestReportOpen}>
+  1551→        <DialogContent className="sm:max-w-[600px] bg-white">
+  1552→          <DialogHeader>
+  1553→            <DialogTitle className="flex items-center gap-2 text-slate-800">
+  1554→              <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
+  1555→                <FileText className="w-4 h-4 text-cyan-600" />
+  1556→              </div>
+  1557→              电芯派克测试报告
+  1558→            </DialogTitle>
+  1559→            <DialogDescription className="text-slate-500">电芯派克检测报告详情</DialogDescription>
+  1560→          </DialogHeader>
+  1561→          {selectedRecord && (
+  1562→            <div className="py-4 space-y-4">
+  1563→              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+  1564→                <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-cyan-500" />基本信息</h4>
+  1565→                <div className="grid grid-cols-2 gap-3 text-xs">
+  1566→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">SN码:</span><span className="font-mono font-semibold text-slate-700">{selectedRecord.sn}</span></div>
+  1567→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">电压:</span><span className="font-semibold text-slate-700">{selectedRecord.voltage}V</span></div>
+  1568→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">温度:</span><span className="text-slate-700">{selectedRecord.temperature}°C</span></div>
+  1569→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">品牌:</span><span className="text-slate-700">{selectedRecord.brand}</span></div>
+  1570→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">型号:</span><span className="text-slate-700">{selectedRecord.model}</span></div>
+  1571→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">类型:</span><span className="text-slate-700">{selectedRecord.type}</span></div>
+  1572→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">成品型号:</span><span className="text-slate-700">{selectedRecord.productModel}</span></div>
+  1573→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">工单编号:</span><span className="font-mono text-cyan-600">{selectedRecord.workOrder}</span></div>
+  1574→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">测试时长:</span><span className="text-slate-700">{selectedRecord.duration}</span></div>
+  1575→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">测试时间:</span><span className="text-slate-700">{selectedRecord.testTime}</span></div>
+  1576→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">测试结果:</span><span className={selectedRecord.result === 'pass' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.result === 'pass' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{selectedRecord.result === 'pass' ? '合格' : '不合格'}</span></div>
+  1577→                </div>
+  1578→              </div>
+  1579→              <div className={`rounded-lg p-4 border ${selectedRecord.result === 'pass' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+  1580→                <div className="flex items-center gap-3">
+  1581→                  {selectedRecord.result === 'pass' ? <CheckCircle2 className="w-6 h-6 text-emerald-600" /> : <XCircle className="w-6 h-6 text-rose-600" />}
+  1582→                  <div>
+  1583→                    <div className={`text-sm font-bold ${selectedRecord.result === 'pass' ? 'text-emerald-700' : 'text-rose-700'}`}>{selectedRecord.result === 'pass' ? '综合判定：合格' : '综合判定：不合格'}</div>
+  1584→                    <div className="text-xs text-slate-500 mt-0.5">{selectedRecord.result === 'pass' ? '所有检测项目均在标准范围内' : '存在检测项目超出标准范围，需异常隔离'}</div>
+  1585→                  </div>
+  1586→                </div>
+  1587→              </div>
+  1588→            </div>
+  1589→          )}
+  1590→          <DialogFooter>
+  1591→            <DialogClose asChild>
+  1592→              <button className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">关闭</button>
+  1593→            </DialogClose>
+  1594→          </DialogFooter>
+  1595→        </DialogContent>
+  1596→      </Dialog>
+  1597→    </div>
+  1598→  )
+  1599→}
+  1600→
+  1601→/* ---------- 7. 老化测试 ---------- */
+  1602→function AgingTestPage() {
+  1603→  const [connected, setConnected] = useState(true)
+  1604→  const [testReportOpen, setTestReportOpen] = useState(false)
+  1605→  const [selectedRecord, setSelectedRecord] = useState<typeof agingCompletedData[0] | null>(null)
+  1606→  const [searchTerm, setSearchTerm] = useState('')
+  1607→  const filteredCompleted = agingCompletedData.filter(r =>
+  1608→    r.sn.includes(searchTerm) || r.workOrder.includes(searchTerm) || r.rackId.includes(searchTerm)
+  1609→  )
+  1610→  // Calculate rack stats
+  1611→  const rackStats = racks.map(rackId => {
+  1612→    const rackCompleted = agingCompletedData.filter(r => r.rackId === rackId)
+  1613→    const rackTesting = agingTestingData.filter(r => r.rackId === rackId)
+  1614→    const passCount = rackCompleted.filter(r => r.result === '合格').length
+  1615→    const failCount = rackCompleted.filter(r => r.result === '不合格').length
+  1616→    const total = rackCompleted.length
+  1617→    const isConnected = connected && (rackTesting.length > 0 || rackCompleted.length > 0)
+  1618→    return { rackId, passCount, failCount, total, rackTesting, isConnected }
+  1619→  })
+  1620→  return (
+  1621→    <div className="space-y-5">
+  1622→      {/* 连接状态 */}
+  1623→      <div className={`connection-banner ${connected ? 'connected' : 'disconnected'}`}>
+  1624→        <div className={`connection-dot ${connected ? 'connected' : 'disconnected'}`} />
+  1625→        <span>{connected ? '老化测试机已连接' : '老化测试机未连接'}</span>
+  1626→        {connected ? <Wifi className="w-4 h-4 ml-1" /> : <WifiOff className="w-4 h-4 ml-1" />}
+  1627→        <button onClick={() => setConnected(!connected)} className="ml-auto text-xs px-3 py-1 rounded-lg border border-current/20 hover:bg-white/50 transition-colors">
+  1628→          {connected ? '断开模拟' : '重连模拟'}
+  1629→        </button>
+  1630→      </div>
+  1631→      {/* 统计卡片 */}
+  1632→      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  1633→        {[
+  1634→          { label: '正在测试', value: agingTestingData.length, unit: '台', color: '#0891b2', bg: 'bg-cyan-50', icon: Thermometer },
+  1635→          { label: '已完成测试', value: agingCompletedData.length, unit: '台', color: '#059669', bg: 'bg-emerald-50', icon: CheckCircle2 },
+  1636→          { label: '合格数量', value: agingCompletedData.filter(r => r.result === '合格').length, unit: '台', color: '#7c3aed', bg: 'bg-violet-50', icon: Target },
+  1637→          { label: '不合格数量', value: agingCompletedData.filter(r => r.result === '不合格').length, unit: '台', color: '#e11d48', bg: 'bg-rose-50', icon: XCircle },
+  1638→        ].map((s, i) => (
+  1639→          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+  1640→            className="dash-card p-4 flex items-center gap-4">
+  1641→            <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}>
+  1642→              <s.icon className="w-6 h-6" style={{ color: s.color }} />
+  1643→            </div>
+  1644→            <div>
+  1645→              <div className="text-2xl font-bold" style={{ color: s.color }}>{s.value}<span className="text-sm font-normal text-slate-400 ml-0.5">{s.unit}</span></div>
+  1646→              <div className="text-xs text-slate-500">{s.label}</div>
+  1647→            </div>
+  1648→          </motion.div>
+  1649→        ))}
+  1650→      </div>
+  1651→      {/* 老化测试架概览 */}
+  1652→      <SectionCard title="老化测试架概览" icon={<Grid3X3 className="w-5 h-5 text-amber-600" />}>
+  1653→        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  1654→          {rackStats.map((rack, i) => (
+  1655→            <motion.div key={rack.rackId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+  1656→              className="dash-card p-4">
+  1657→              <div className="flex items-center justify-between mb-3">
+  1658→                <div className="flex items-center gap-2">
+  1659→                  <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+  1660→                    <Thermometer className="w-4 h-4 text-amber-600" />
+  1661→                  </div>
+  1662→                  <div className="font-semibold text-slate-700">{rack.rackId}</div>
+  1663→                </div>
+  1664→                <div className="flex items-center gap-1.5">
+  1665→                  {rack.isConnected ? <Wifi className="w-3.5 h-3.5 text-emerald-500" /> : <WifiOff className="w-3.5 h-3.5 text-slate-400" />}
+  1666→                  <span className={`text-xs font-medium ${rack.isConnected ? 'text-emerald-600' : 'text-slate-400'}`}>{rack.isConnected ? '已连接' : '未连接'}</span>
+  1667→                </div>
+  1668→              </div>
+  1669→              <div className="grid grid-cols-2 gap-3 mb-3">
+  1670→                <div className="text-center p-2 bg-emerald-50 rounded-lg">
+  1671→                  <div className="text-lg font-bold text-emerald-600">{rack.passCount}</div>
+  1672→                  <div className="text-[10px] text-slate-500">合格</div>
+  1673→                </div>
+  1674→                <div className="text-center p-2 bg-rose-50 rounded-lg">
+  1675→                  <div className="text-lg font-bold text-rose-600">{rack.failCount}</div>
+  1676→                  <div className="text-[10px] text-slate-500">不合格</div>
+  1677→                </div>
+  1678→              </div>
+  1679→              {rack.total > 0 && (
+  1680→                <div className="w-full bg-slate-100 rounded-full h-2 mb-2">
+  1681→                  <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${(rack.passCount / rack.total) * 100}%` }} />
+  1682→                </div>
+  1683→              )}
+  1684→              <div className="text-xs text-slate-500">
+  1685→                通过率: {rack.total > 0 ? Math.round((rack.passCount / rack.total) * 100) : 0}%
+  1686→              </div>
+  1687→              {rack.rackTesting.length > 0 && (
+  1688→                <div className="mt-2 pt-2 border-t border-slate-100">
+  1689→                  <div className="text-[10px] text-slate-400 mb-1">正在测试设备:</div>
+  1690→                  {rack.rackTesting.map(item => (
+  1691→                    <div key={item.sn} className="py-1.5">
+  1692→                      <div className="flex items-center justify-between text-xs">
+  1693→                        <span className="font-mono text-slate-600">{item.sn}</span>
+  1694→                        <span className="text-amber-600 font-medium">{item.progress}%</span>
+  1695→                      </div>
+  1696→                      <div className="flex items-center gap-1 text-[10px] mt-0.5">
+  1697→                        <span className="text-slate-400">工单:</span>
+  1698→                        <span className="font-mono text-cyan-600">{item.workOrder}</span>
+  1699→                      </div>
+  1700→                    </div>
+  1701→                  ))}
+  1702→                </div>
+  1703→              )}
+  1704→            </motion.div>
+  1705→          ))}
+  1706→        </div>
+  1707→      </SectionCard>
+  1708→      {/* 已完成老化测试 */}
+  1709→      <SectionCard title="已完成老化测试记录" icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}>
+  1710→        <div className="mb-4">
+  1711→          <div className="relative inline-block">
+  1712→            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+  1713→            <input type="text" placeholder="搜索SN码 / 工单编号 / 测试架编号" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+  1714→              className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all w-80" />
+  1715→          </div>
+  1716→        </div>
+  1717→        <div className="overflow-x-auto rounded-lg border border-slate-200">
+  1718→          <table className="data-table">
+  1719→            <thead><tr><th>设备 SN 码</th><th>温度</th><th>电压</th><th>损耗</th><th>充电</th><th>放电</th><th>测试结果</th><th>测试时长</th><th>测试时间</th><th>生产单编号</th><th>测试架编号</th><th>操作</th></tr></thead>
+  1720→            <tbody>
+  1721→              {filteredCompleted.map((r, i) => (
+  1722→                <tr key={i}>
+  1723→                  <td className="font-mono font-semibold text-slate-700">{r.sn}</td>
+  1724→                  <td className={r.temperature > 60 ? 'text-rose-600 font-semibold' : 'text-slate-600'}>{r.temperature}°C</td>
+  1725→                  <td className={r.voltage < 3.5 ? 'text-rose-600 font-semibold' : 'text-slate-600'}>{r.voltage}V</td>
+  1726→                  <td className={r.loss > 5 ? 'text-rose-600 font-semibold' : 'text-amber-600 font-semibold'}>{r.loss}%</td>
+  1727→                  <td className="text-slate-600">{r.charge}</td>
+  1728→                  <td className="text-slate-600">{r.discharge}</td>
+  1729→                  <td><span className={r.result === '合格' ? 'badge-pass' : 'badge-fail'}>{r.result === '合格' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{r.result}</span></td>
+  1730→                  <td className="text-slate-500 font-mono text-xs">{r.duration}</td>
+  1731→                  <td className="text-slate-500 text-xs whitespace-nowrap">{r.testTime}</td>
+  1732→                  <td className="font-mono text-xs text-cyan-600">{r.workOrder}</td>
+  1733→                  <td><span className="text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">{r.rackId}</span></td>
+  1734→                  <td><button onClick={() => { setSelectedRecord(r); setTestReportOpen(true) }} className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium"><FileText className="w-3.5 h-3.5" />测试报告</button></td>
+  1735→                </tr>
+  1736→              ))}
+  1737→            </tbody>
+  1738→          </table>
+  1739→        </div>
+  1740→      </SectionCard>
+  1741→      {/* 老化测试报告弹窗 */}
+  1742→      <Dialog open={testReportOpen} onOpenChange={setTestReportOpen}>
+  1743→        <DialogContent className="sm:max-w-[600px] bg-white">
+  1744→          <DialogHeader>
+  1745→            <DialogTitle className="flex items-center gap-2 text-slate-800">
+  1746→              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+  1747→                <FileText className="w-4 h-4 text-amber-600" />
+  1748→              </div>
+  1749→              老化测试报告
+  1750→            </DialogTitle>
+  1751→            <DialogDescription className="text-slate-500">设备老化检测报告详情</DialogDescription>
+  1752→          </DialogHeader>
+  1753→          {selectedRecord && (
+  1754→            <div className="py-4 space-y-4">
+  1755→              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+  1756→                <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2"><div className="w-1 h-4 rounded-full bg-amber-500" />设备信息</h4>
+  1757→                <div className="grid grid-cols-2 gap-3 text-xs">
+  1758→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">SN码:</span><span className="font-mono font-semibold text-slate-700">{selectedRecord.sn}</span></div>
+  1759→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">温度:</span><span className="text-slate-700">{selectedRecord.temperature}°C</span></div>
+  1760→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">电压:</span><span className="text-slate-700">{selectedRecord.voltage}V</span></div>
+  1761→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">损耗:</span><span className="text-slate-700">{selectedRecord.loss}%</span></div>
+  1762→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">充电:</span><span className="text-slate-700">{selectedRecord.charge}</span></div>
+  1763→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">放电:</span><span className="text-slate-700">{selectedRecord.discharge}</span></div>
+  1764→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">测试时长:</span><span className="text-slate-700">{selectedRecord.duration}</span></div>
+  1765→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">测试架:</span><span className="font-mono text-amber-600">{selectedRecord.rackId}</span></div>
+  1766→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">工单编号:</span><span className="font-mono text-cyan-600">{selectedRecord.workOrder}</span></div>
+  1767→                  <div className="flex items-center gap-2"><span className="text-slate-500 w-16">测试结果:</span><span className={selectedRecord.result === '合格' ? 'badge-pass' : 'badge-fail'}>{selectedRecord.result === '合格' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{selectedRecord.result}</span></div>
+  1768→                </div>
+  1769→              </div>
+  1770→              <div className={`rounded-lg p-4 border ${selectedRecord.result === '合格' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+  1771→                <div className="flex items-center gap-3">
+  1772→                  {selectedRecord.result === '合格' ? <CheckCircle2 className="w-6 h-6 text-emerald-600" /> : <XCircle className="w-6 h-6 text-rose-600" />}
+  1773→                  <div>
+  1774→                    <div className={`text-sm font-bold ${selectedRecord.result === '合格' ? 'text-emerald-700' : 'text-rose-700'}`}>{selectedRecord.result === '合格' ? '综合判定：合格' : '综合判定：不合格'}</div>
+  1775→                    <div className="text-xs text-slate-500 mt-0.5">{selectedRecord.result === '合格' ? '老化测试各项指标均在标准范围内' : '老化测试存在指标超出标准范围'}</div>
+  1776→                  </div>
+  1777→                </div>
+  1778→              </div>
+  1779→            </div>
+  1780→          )}
+  1781→          <DialogFooter>
+  1782→            <DialogClose asChild>
+  1783→              <button className="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors">关闭</button>
+  1784→            </DialogClose>
+  1785→          </DialogFooter>
+  1786→        </DialogContent>
+  1787→      </Dialog>
+  1788→    </div>
+  1789→  )
+  1790→}
+  1791→
+  1792→/* ---------- 8. 人员管理 ---------- */
+  1793→function PersonnelPage() {
+  1794→  const [addEmployeeOpen, setAddEmployeeOpen] = useState(false)
+  1795→  const [logOpen, setLogOpen] = useState(false)
+  1796→  const [empDataOpen, setEmpDataOpen] = useState(false)
+  1797→  const [editEmployeeOpen, setEditEmployeeOpen] = useState(false)
+  1798→  const [selectedEmployee, setSelectedEmployee] = useState<typeof personnelData[0] | null>(null)
+  1799→
+  1800→  /* 工段选项列表 */
+  1801→  const sectionOptions = ['系统管理', '半成品测试', '成品测试', '物料管理', '老化测试', '设备装箱', '电芯派克']
+  1802→
+  1803→  /* 添加员工 - 工段多选 */
+  1804→  const [addSections, setAddSections] = useState<string[]>([])
+  1805→  const [addSectionDropdown, setAddSectionDropdown] = useState(false)
+  1806→
+  1807→  /* 编辑员工 - 工段多选 */
+  1808→  const [editSections, setEditSections] = useState<string[]>([])
+  1809→  const [editSectionDropdown, setEditSectionDropdown] = useState(false)
+  1810→  const [editName, setEditName] = useState('')
+  1811→  const [editAccount, setEditAccount] = useState('')
+  1812→  const [editRole, setEditRole] = useState('operator')
+  1813→  const [editPhone, setEditPhone] = useState('')
+  1814→  const [editPermOverrides, setEditPermOverrides] = useState<Record<string, boolean>>({})
+  1815→
+  1816→  /* 权限标签配置 - 可编辑状态 */
+  1817→  const [permConfig, setPermConfig] = useState<Record<string, { label: string; permissions: { key: string; label: string; allowed: boolean }[] }>>(JSON.parse(JSON.stringify(ROLE_PERMISSIONS)))
+  1818→
+  1819→  /* 添加员工时选择的权限标签 */
+  1820→  const [addRole, setAddRole] = useState('operator')
+  1821→  /* 添加员工时具体权限的可编辑副本 */
+  1822→  const [addPermOverrides, setAddPermOverrides] = useState<Record<string, boolean>>({})
+  1823→
+  1824→  const roleMap: Record<string, { label: string; cls: string }> = {
+  1825→    admin: { label: '管理员', cls: 'badge-admin' },
+  1826→    operator: { label: '操作员', cls: 'badge-operator' },
+  1827→    viewer: { label: '查看者', cls: 'badge-viewer' },
+  1828→  }
+  1829→
+  1830→  /* 当选择权限标签时，重置权限覆盖为该标签的默认权限 */
+  1831→  const handleAddRoleChange = (role: string) => {
+  1832→    setAddRole(role)
+  1833→    const defaults: Record<string, boolean> = {}
+  1834→    permConfig[role]?.permissions.forEach(p => { defaults[p.key] = p.allowed })
+  1835→    setAddPermOverrides(defaults)
+  1836→  }
+  1837→
+  1838→  /* 初始化添加员工权限 */
+  1839→  const openAddEmployee = () => {
+  1840→    setAddRole('operator')
+  1841→    setAddSections([])
+  1842→    setAddSectionDropdown(false)
+  1843→    const defaults: Record<string, boolean> = {}
+  1844→    permConfig['operator']?.permissions.forEach(p => { defaults[p.key] = p.allowed })
+  1845→    setAddPermOverrides(defaults)
+  1846→    setAddEmployeeOpen(true)
+  1847→  }
+  1848→
+  1849→  /* 初始化编辑员工 */
+  1850→  const openEditEmployee = (emp: typeof personnelData[0]) => {
+  1851→    setSelectedEmployee(emp)
+  1852→    setEditName(emp.name)
+  1853→    setEditAccount(emp.account)
+  1854→    setEditRole(emp.role)
+  1855→    setEditPhone(emp.phone)
+  1856→    setEditSections([...emp.section])
+  1857→    setEditSectionDropdown(false)
+  1858→    const defaults: Record<string, boolean> = {}
+  1859→    permConfig[emp.role]?.permissions.forEach(p => { defaults[p.key] = p.allowed })
+  1860→    setEditPermOverrides(defaults)
+  1861→    setEditEmployeeOpen(true)
+  1862→  }
+  1863→
+  1864→  /* 权限配置 - 切换某个角色某个模块的权限 */
+  1865→  const togglePermConfig = (roleKey: string, permKey: string) => {
+  1866→    setPermConfig(prev => {
+  1867→      const updated = JSON.parse(JSON.stringify(prev))
+  1868→      const perm = updated[roleKey]?.permissions.find((p: { key: string }) => p.key === permKey)
+  1869→      if (perm) perm.allowed = !perm.allowed
+  1870→      return updated
+  1871→    })
+  1872→  }
+  1873→
+  1874→  /* 添加员工 - 切换某个权限 */
+  1875→  const toggleAddPerm = (permKey: string) => {
+  1876→    setAddPermOverrides(prev => ({ ...prev, [permKey]: !prev[permKey] }))
+  1877→  }
+  1878→
+  1879→  /* 编辑员工 - 切换某个权限 */
+  1880→  const toggleEditPerm = (permKey: string) => {
+  1881→    setEditPermOverrides(prev => ({ ...prev, [permKey]: !prev[permKey] }))
+  1882→  }
+  1883→
+  1884→  /* 编辑员工 - 切换权限标签 */
+  1885→  const handleEditRoleChange = (role: string) => {
+  1886→    setEditRole(role)
+  1887→    const defaults: Record<string, boolean> = {}
+  1888→    permConfig[role]?.permissions.forEach(p => { defaults[p.key] = p.allowed })
+  1889→    setEditPermOverrides(defaults)
+  1890→  }
+  1891→
+  1892→  /* 工段多选 - 添加 */
+  1893→  const toggleSection = (section: string, mode: 'add' | 'edit') => {
+  1894→    if (mode === 'add') {
+  1895→      setAddSections(prev =>
+  1896→        prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]
+  1897→      )
+  1898→    } else {
+  1899→      setEditSections(prev =>
+  1900→        prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]
+  1901→      )
+  1902→    }
+  1903→  }
+  1904→
+  1905→  /* 移除已选工段标签 */
+  1906→  const removeSection = (section: string, mode: 'add' | 'edit') => {
+  1907→    if (mode === 'add') {
+  1908→      setAddSections(prev => prev.filter(s => s !== section))
+  1909→    } else {
+  1910→      setEditSections(prev => prev.filter(s => s !== section))
+  1911→    }
+  1912→  }
+  1913→
+  1914→  return (
+  1915→    <div className="space-y-5">
+  1916→      <SectionCard title="人员管理列表" icon={<Users className="w-5 h-5 text-cyan-600" />}
+  1917→        action={
+  1918→          <button onClick={openAddEmployee} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-700 transition-colors shadow-sm">
+  1919→            <UserPlus className="w-4 h-4" /> 添加员工
+  1920→          </button>
+  1921→        }
+  1922→      >
+  1923→        <div className="overflow-x-auto rounded-lg border border-slate-200">
+  1924→          <table className="data-table">
+  1925→            <thead><tr><th>员工姓名</th><th>账号</th><th>权限</th><th>工段</th><th>手机号</th><th>账号状态</th><th>操作</th></tr></thead>
+  1926→            <tbody>
+  1927→              {personnelData.map((p) => (
+  1928→                <tr key={p.id}>
+  1929→                  <td className="font-semibold text-slate-700">{p.name}</td>
+  1930→                  <td className="font-mono text-xs text-slate-600">{p.account}</td>
+  1931→                  <td><span className={roleMap[p.role].cls}>{roleMap[p.role].label}</span></td>
+  1932→                  <td>
+  1933→                    <div className="flex flex-wrap gap-1">
+  1934→                      {p.section.map(s => (
+  1935→                        <span key={s} className="text-xs px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 font-medium border border-cyan-100">{s}</span>
+  1936→                      ))}
+  1937→                    </div>
+  1938→                  </td>
+  1939→                  <td className="text-slate-600">{p.phone}</td>
+  1940→                  <td><span className={p.status === '正常' ? 'badge-pass' : 'badge-disabled'}>{p.status}</span></td>
+  1941→                  <td>
+  1942→                    <div className="flex items-center gap-3">
+  1943→                      <button onClick={() => openEditEmployee(p)} className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-xs font-medium"><Pencil className="w-3.5 h-3.5" />资料修改</button>
+  1944→                      <button className="flex items-center gap-1 text-rose-600 hover:text-rose-700 text-xs font-medium"><Trash2 className="w-3.5 h-3.5" />删除</button>
+  1945→                      <button className="flex items-center gap-1 text-amber-600 hover:text-amber-700 text-xs font-medium"><UserX className="w-3.5 h-3.5" />禁用</button>
+  1946→                      <button onClick={() => { setSelectedEmployee(p); setLogOpen(true) }} className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium"><History className="w-3.5 h-3.5" />操作日志</button>
+  1947→                      <button onClick={() => { setSelectedEmployee(p); setEmpDataOpen(true) }} className="flex items-center gap-1 text-violet-600 hover:text-violet-700 text-xs font-medium"><Eye className="w-3.5 h-3.5" />数据查看</button>
+  1948→                      <button className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 text-xs font-medium"><Cog className="w-3.5 h-3.5" />权限详情</button>
+  1949→                    </div>
+  1950→                  </td>
+  1951→                </tr>
+  1952→              ))}
+  1953→            </tbody>
+  1954→          </table>
+  1955→        </div>
+  1956→      </SectionCard>
+  1957→
+  1958→      {/* 权限标签配置 - 独立区域 */}
+  1959→      <SectionCard title="权限标签配置" icon={<Cog className="w-5 h-5 text-emerald-600" />}
+  1960→        action={
+  1961→          <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm">
+  1962→            <Save className="w-4 h-4" /> 保存配置
+  1963→          </button>
+  1964→        }
+  1965→      >
+  1966→        <div className="space-y-4">
+  1967→          {Object.entries(permConfig).map(([roleKey, role]) => (
+  1968→            <div key={roleKey} className="border border-slate-200 rounded-xl overflow-hidden">
+  1969→              <div className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+  1970→                <div className="flex items-center gap-3">
+  1971→                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${roleKey === 'admin' ? 'bg-rose-50' : roleKey === 'operator' ? 'bg-cyan-50' : 'bg-amber-50'}`}>
+  1972→                    <Cog className={`w-4 h-4 ${roleKey === 'admin' ? 'text-rose-600' : roleKey === 'operator' ? 'text-cyan-600' : 'text-amber-600'}`} />
+  1973→                  </div>
+  1974→                  <div>
+  1975→                    <span className={`text-sm font-bold ${roleKey === 'admin' ? 'text-rose-700' : roleKey === 'operator' ? 'text-cyan-700' : 'text-amber-700'}`}>{role.label}</span>
+  1976→                    <span className="text-[10px] text-slate-400 ml-2">已开启 {role.permissions.filter(p => p.allowed).length} / {role.permissions.length} 项权限</span>
+  1977→                  </div>
+  1978→                </div>
+  1979→                <div className="flex items-center gap-1.5">
+  1980→                  <span className="text-[10px] text-slate-400">点击权限项可切换开启/关闭</span>
+  1981→                </div>
+  1982→              </div>
+  1983→              <div className="grid grid-cols-3 md:grid-cols-4 gap-2 p-4">
+  1984→                {role.permissions.map(perm => (
+  1985→                  <button key={perm.key} onClick={() => togglePermConfig(roleKey, perm.key)}
+  1986→                    className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all text-left ${perm.allowed ? 'bg-emerald-50 border-emerald-200 hover:border-emerald-300' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+  1987→                    {perm.allowed
+  1988→                      ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+  1989→                      : <XCircle className="w-4 h-4 text-slate-300 flex-shrink-0" />}
+  1990→                    <span className={`text-xs font-medium ${perm.allowed ? 'text-emerald-700' : 'text-slate-400'}`}>{perm.label}</span>
+  1991→                  </button>
+  1992→                ))}
+  1993→              </div>
+  1994→            </div>
+  1995→          ))}
+  1996→        </div>
+  1997→      </SectionCard>
+  1998→
+  1999→      {/* 添加员工弹窗 */}
+  2000→      <Dialog open={addEmployeeOpen} onOpenChange={setAddEmployeeOpen}>
+
+[showing lines 1-2000 of 4294; use offset=2001 with limit to continue reading]

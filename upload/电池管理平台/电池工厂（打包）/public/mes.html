@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MES 生产溯源管理系统</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/* ========== Reset & Base ========== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#0891b2;--primary-light:#06b6d4;--primary-dark:#0e7490;
+  --accent:#7c3aed;--accent-light:#a78bfa;
+  --success:#059669;--success-light:#34d399;--success-bg:#ecfdf5;
+  --danger:#e11d48;--danger-light:#fb7185;--danger-bg:#fff1f2;
+  --warning:#d97706;--warning-light:#fbbf24;--warning-bg:#fffbeb;
+  --info:#2563eb;--info-bg:#eff6ff;
+  --bg:#f0f4f8;--bg-card:#ffffff;--bg-hover:#f8fafc;--bg-section:#f8fafc;
+  --text:#1e293b;--text-sec:#475569;--text-muted:#94a3b8;--text-light:#cbd5e1;
+  --border:#e2e8f0;--border-light:#f1f5f9;
+  --radius:14px;--radius-sm:10px;--radius-xs:6px;
+  --shadow:0 1px 3px rgba(0,0,0,.04),0 4px 14px rgba(0,0,0,.03);
+  --shadow-hover:0 4px 16px rgba(0,0,0,.07),0 2px 6px rgba(0,0,0,.04);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.08);
+  --transition:all .25s cubic-bezier(.4,0,.2,1);
+}
+html{font-size:14px;scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow:hidden;height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+
+/* ========== Layout ========== */
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:240px;flex-shrink:0;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;transition:var(--transition)}
+.sidebar-logo{height:64px;display:flex;align-items:center;gap:12px;padding:0 20px;border-bottom:1px solid var(--border-light)}
+.sidebar-logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;box-shadow:0 4px 12px rgba(8,145,178,.25)}
+.sidebar-logo-text{font-size:13px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.5px}
+.sidebar-logo-sub{font-size:8px;color:var(--text-muted);letter-spacing:1.5px;margin-top:1px}
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav-group-title{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px;padding:12px 14px 6px;margin-top:4px}
+.nav-item{width:100%;display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text-sec);border:1px solid transparent;cursor:pointer;transition:var(--transition);position:relative;overflow:hidden}
+.nav-item:hover{background:var(--bg-hover);color:var(--text);transform:translateX(2px)}
+.nav-item.active{background:linear-gradient(135deg,rgba(8,145,178,.08),rgba(124,58,237,.05));color:var(--primary);border-color:rgba(8,145,178,.15);font-weight:600;box-shadow:0 2px 8px rgba(8,145,178,.08)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:20%;height:60%;width:3px;border-radius:0 3px 3px 0;background:linear-gradient(180deg,var(--primary),var(--accent))}
+.nav-item i{width:18px;text-align:center;font-size:14px;transition:var(--transition)}
+.nav-item.active i{color:var(--primary)}
+.nav-item-arrow{margin-left:auto;font-size:10px;opacity:.5;transition:var(--transition)}
+.nav-item.active .nav-item-arrow{opacity:1;color:var(--primary)}
+.sidebar-footer{padding:14px 20px;border-top:1px solid var(--border-light)}
+.sidebar-status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-muted)}
+.sidebar-status-dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 8px rgba(5,150,105,.4);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* Main Content */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.header{height:64px;display:flex;align-items:center;justify-content:between;padding:0 28px;background:rgba(255,255,255,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);flex-shrink:0;z-index:5}
+.header-title{font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px}
+.header-title i{color:var(--primary);font-size:15px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:16px}
+.header-clock{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-sec);font-variant-numeric:tabular-nums}
+.header-clock i{color:var(--primary);font-size:13px}
+.header-divider{width:1px;height:24px;background:var(--border)}
+.header-user{display:flex;align-items:center;gap:10px}
+.header-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(124,58,237,.2)}
+.header-user-info{display:flex;flex-direction:column}
+.header-user-name{font-size:13px;font-weight:600;color:var(--text)}
+.header-user-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted)}
+.header-user-role{font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(8,145,178,.08);color:var(--primary);font-weight:600;border:1px solid rgba(8,145,178,.15)}
+
+.content{flex:1;overflow-y:auto;padding:24px 28px}
+.content-footer{margin-top:24px;padding-bottom:12px;display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted)}
+
+/* ========== Components ========== */
+/* Cards */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);transition:var(--transition);overflow:hidden}
+.card:hover{box-shadow:var(--shadow-hover)}
+.card-header{display:flex;align-items:center;justify-content:between;padding:16px 24px;border-bottom:1px solid var(--border-light)}
+.card-header-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--text)}
+.card-header-title i{font-size:15px}
+.card-header-action{margin-left:auto}
+.card-body{padding:20px 24px}
+
+/* KPI Cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;transition:var(--transition);position:relative;overflow:hidden}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}
+.kpi-card::after{content:'';position:absolute;top:0;right:0;width:80px;height:80px;border-radius:50%;opacity:.04;transform:translate(20px,-20px)}
+.kpi-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.kpi-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.kpi-value{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1}
+.kpi-value-unit{font-size:12px;font-weight:400;color:var(--text-muted);margin-left:3px}
+.kpi-label{font-size:11px;color:var(--text-sec);margin-top:4px}
+.kpi-trend{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+.kpi-trend.up{background:var(--success-bg);color:var(--success)}
+.kpi-trend.down{background:var(--danger-bg);color:var(--danger)}
+.kpi-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px}
+.kpi-badge.pass{background:var(--success-bg);color:var(--success)}
+.kpi-badge.fail{background:var(--danger-bg);color:var(--danger)}
+.kpi-progress{margin-top:10px;height:5px;background:var(--border-light);border-radius:3px;overflow:hidden}
+.kpi-progress-bar{height:100%;border-radius:3px;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+
+/* Anomaly Monitor */
+.anomaly-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.anomaly-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid;transition:var(--transition)}
+.anomaly-item:hover{transform:scale(1.02)}
+.anomaly-item.warning{background:rgba(217,119,6,.04);border-color:rgba(217,119,6,.15)}
+.anomaly-item.danger{background:rgba(225,29,72,.04);border-color:rgba(225,29,72,.15)}
+.anomaly-label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-sec)}
+.anomaly-label i{font-size:12px}
+.anomaly-value{font-size:14px;font-weight:700}
+
+/* Chart Cards */
+.chart-grid{display:grid;gap:18px}
+.chart-row{display:grid;gap:18px}
+.chart-row.r5{grid-template-columns:3fr 2fr}
+.chart-row.r2{grid-template-columns:1fr 1fr}
+.chart-row.r3{grid-template-columns:1fr 1fr 1fr}
+.chart-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:var(--transition)}
+.chart-card:hover{box-shadow:var(--shadow-hover)}
+.chart-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--text);margin-bottom:16px}
+.chart-title i{font-size:14px}
+.chart-container{position:relative;height:300px}
+.chart-container.sm{height:240px}
+
+/* Time Selector */
+.time-selector{display:flex;align-items:center;background:var(--bg-card);border-radius:var(--radius-sm);padding:3px;border:1px solid var(--border);box-shadow:var(--shadow);gap:2px}
+.time-btn{padding:6px 12px;border-radius:var(--radius-xs);font-size:11px;font-weight:500;color:var(--text-sec);background:transparent;border:none;cursor:pointer;transition:var(--transition)}
+.time-btn:hover{color:var(--text);background:var(--bg-hover)}
+.time-btn.active{background:var(--primary);color:#fff;font-weight:600;box-shadow:0 2px 6px rgba(8,145,178,.25)}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid}
+.badge i{font-size:10px}
+.badge-pass{background:var(--success-bg);color:var(--success);border-color:#a7f3d0}
+.badge-fail{background:var(--danger-bg);color:var(--danger);border-color:#fecdd3}
+.badge-tested{background:var(--info-bg);color:var(--info);border-color:#bfdbfe}
+.badge-synced{background:var(--success-bg);color:var(--success);border-color:#a7f3d0}
+.badge-admin{background:var(--info-bg);color:var(--info);border-color:#bfdbfe}
+.badge-operator{background:var(--success-bg);color:var(--success);border-color:#a7f3d0}
+.badge-viewer{background:#faf5ff;color:var(--accent);border-color:#ddd6fe}
+.badge-warning{background:var(--warning-bg);color:var(--warning);border-color:#fde68a}
+.badge-disabled{background:var(--bg-section);color:var(--text-muted);border-color:var(--border)}
+.badge-location{background:var(--bg-section);color:var(--text-sec);border-color:var(--border);font-size:10px;padding:2px 8px}
+
+/* Connection Banner */
+.connection-banner{display:flex;align-items:center;gap:10px;padding:14px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;transition:var(--transition);margin-bottom:16px}
+.connection-banner.connected{background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1px solid #a7f3d0;color:var(--success)}
+.connection-banner.disconnected{background:linear-gradient(135deg,#fff1f2,#fef2f2);border:1px solid #fecdd3;color:var(--danger)}
+.connection-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.connection-dot.connected{background:var(--success);box-shadow:0 0 8px rgba(5,150,105,.4);animation:pulse-dot 2s infinite}
+.connection-dot.disconnected{background:var(--danger);box-shadow:0 0 8px rgba(225,29,72,.4)}
+.connection-toggle{margin-left:auto;font-size:11px;padding:4px 12px;border-radius:var(--radius-xs);border:1px solid currentColor;opacity:.5;background:transparent;color:currentColor;cursor:pointer;transition:var(--transition)}
+.connection-toggle:hover{opacity:.8;background:rgba(255,255,255,.5)}
+
+/* Stat Cards Row */
+.stat-grid{display:grid;gap:14px}
+.stat-grid.c4{grid-template-columns:repeat(4,1fr)}
+.stat-grid.c3{grid-template-columns:repeat(3,1fr)}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:14px;transition:var(--transition)}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.stat-value{font-size:24px;font-weight:800;line-height:1}
+.stat-value-unit{font-size:12px;font-weight:400;color:var(--text-muted);margin-left:2px}
+.stat-label{font-size:11px;color:var(--text-sec);margin-top:2px}
+
+/* Testing Items */
+.testing-grid{display:grid;gap:14px}
+.testing-grid.c2{grid-template-columns:repeat(2,1fr)}
+.testing-grid.c3{grid-template-columns:repeat(3,1fr)}
+.testing-item{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;transition:var(--transition)}
+.testing-item:hover{border-color:#cbd5e1;box-shadow:var(--shadow-hover)}
+.testing-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.testing-info{display:flex;align-items:center;gap:10px}
+.testing-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.testing-sn{font-size:13px;font-weight:700;font-family:'SF Mono',Monaco,monospace;color:var(--text)}
+.testing-sub{font-size:11px;color:var(--text-sec)}
+.testing-timer{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-sec);font-family:'SF Mono',Monaco,monospace}
+.testing-timer i{font-size:12px}
+.testing-metrics{display:grid;gap:8px;margin-bottom:12px}
+.testing-metrics.c3{grid-template-columns:repeat(3,1fr)}
+.testing-metrics.c2{grid-template-columns:repeat(2,1fr)}
+.testing-metric{text-align:center;padding:8px 6px;background:var(--bg-section);border-radius:var(--radius-xs);border:1px solid var(--border-light)}
+.testing-metric-label{font-size:10px;color:var(--text-muted);margin-bottom:2px}
+.testing-metric-value{font-size:13px;font-weight:700}
+.progress-track{width:100%;height:6px;background:var(--border-light);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.progress-label{display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--text-muted)}
+.progress-pct{font-weight:600}
+
+/* Data Tables */
+.table-wrap{overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--border)}
+.data-table{width:100%;border-collapse:separate;border-spacing:0}
+.data-table thead th{background:var(--bg-section);color:var(--text-sec);font-weight:600;font-size:11px;padding:12px 16px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.5px}
+.data-table tbody td{padding:12px 16px;font-size:12px;color:var(--text);border-bottom:1px solid var(--border-light);vertical-align:middle}
+.data-table tbody tr{transition:background .15s}
+.data-table tbody tr:hover{background:var(--bg-hover)}
+.data-table .mono{font-family:'SF Mono',Monaco,monospace;font-size:11px}
+.data-table .font-bold{font-weight:700}
+.data-table .text-sm{font-size:11px}
+.text-danger{color:var(--danger)!important;font-weight:600}
+.text-success{color:var(--success)!important;font-weight:600}
+.text-warning{color:var(--warning)!important;font-weight:600}
+.text-primary{color:var(--primary)!important;font-weight:600}
+.text-muted{color:var(--text-sec)!important}
+
+/* Action Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius-xs);font-size:12px;font-weight:600;border:none;cursor:pointer;transition:var(--transition);text-decoration:none}
+.btn i{font-size:12px}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(8,145,178,.2)}
+.btn-primary:hover{background:var(--primary-dark);box-shadow:0 4px 12px rgba(8,145,178,.3)}
+.btn-outline{background:transparent;color:var(--text-sec);border:1px solid var(--border)}
+.btn-outline:hover{background:var(--bg-hover);border-color:#cbd5e1}
+.btn-text{background:transparent;border:none;padding:4px 8px;font-weight:600}
+.btn-text.cyan{color:var(--primary)}.btn-text.cyan:hover{color:var(--primary-dark)}
+.btn-text.red{color:var(--danger)}.btn-text.red:hover{color:#be123c}
+.btn-text.amber{color:var(--warning)}.btn-text.amber:hover{color:#b45309}
+
+/* Search */
+.search-box{position:relative;display:inline-block}
+.search-box input{padding:8px 14px 8px 36px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;outline:none;transition:var(--transition);width:280px}
+.search-box input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(8,145,178,.1)}
+.search-box i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.4);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center;animation:fadeIn .2s}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;box-shadow:var(--shadow-lg);max-width:600px;width:92%;max-height:85vh;overflow-y:auto;animation:slideUp .25s cubic-bezier(.4,0,.2,1)}
+.modal.wide{max-width:650px}
+.modal-header{padding:20px 24px 0;display:flex;align-items:center;gap:12px}
+.modal-header-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.modal-header-text h3{font-size:15px;font-weight:700;color:var(--text)}
+.modal-header-text p{font-size:12px;color:var(--text-sec);margin-top:2px}
+.modal-close{margin-left:auto;width:32px;height:32px;border-radius:8px;border:none;background:var(--bg-section);color:var(--text-sec);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition)}
+.modal-close:hover{background:var(--border);color:var(--text)}
+.modal-body{padding:20px 24px}
+.modal-footer{padding:0 24px 20px;display:flex;gap:10px;justify-content:flex-end}
+
+/* Modal Form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-label{font-size:11px;font-weight:600;color:var(--text)}
+.form-label .req{color:var(--danger)}
+.form-input{padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:12px;outline:none;transition:var(--transition)}
+.form-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(8,145,178,.1)}
+.form-input:read-only{background:var(--bg-section);color:var(--text-sec)}
+select.form-input{background:#fff;cursor:pointer}
+
+/* Modal Report Sections */
+.report-section{background:var(--bg-section);border-radius:var(--radius-sm);padding:14px 16px;border:1px solid var(--border-light);margin-bottom:12px}
+.report-section-title{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--text);margin-bottom:10px}
+.report-section-title .dot{width:4px;height:14px;border-radius:2px}
+.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px}
+.report-item{display:flex;align-items:center;gap:6px}
+.report-item-label{color:var(--text-sec);min-width:56px}
+.report-item-value{color:var(--text);font-weight:600}
+.report-table{width:100%;font-size:11px;border-collapse:collapse}
+.report-table th{text-align:left;padding:6px 8px;color:var(--text-sec);font-weight:600;border-bottom:1px solid var(--border)}
+.report-table td{padding:6px 8px;color:var(--text);border-bottom:1px solid var(--border-light)}
+.report-verdict{border-radius:var(--radius-sm);padding:14px 16px;display:flex;align-items:center;gap:12px;margin-top:12px}
+.report-verdict.pass{background:var(--success-bg);border:1px solid #a7f3d0}
+.report-verdict.fail{background:var(--danger-bg);border:1px solid #fecdd3}
+.report-verdict-icon{font-size:20px}
+.report-verdict-text{font-size:13px;font-weight:700}
+.report-verdict-sub{font-size:11px;color:var(--text-sec);margin-top:2px}
+
+/* Stats Badges in Material */
+.stats-row{display:flex;gap:16px;font-size:12px;align-items:center}
+.stats-row .stat-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+/* Operation Log */
+.log-item{display:flex;gap:12px;padding:12px;background:var(--bg-section);border-radius:var(--radius-sm);border:1px solid var(--border-light);margin-bottom:10px}
+.log-icon{width:34px;height:34px;border-radius:8px;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;flex-shrink:0}
+.log-content{flex:1;min-width:0}
+.log-top{display:flex;align-items:center;justify-content:space-between}
+.log-action{font-size:11px;font-weight:700;color:var(--text)}
+.log-time{font-size:10px;color:var(--text-muted);font-family:'SF Mono',Monaco,monospace}
+.log-detail{font-size:11px;color:var(--text-sec);margin-top:2px}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.animate-in{animation:slideUp .4s cubic-bezier(.4,0,.2,1) both}
+.delay-1{animation-delay:.05s}.delay-2{animation-delay:.1s}.delay-3{animation-delay:.15s}.delay-4{animation-delay:.2s}
+.delay-5{animation-delay:.25s}.delay-6{animation-delay:.3s}.delay-7{animation-delay:.35s}.delay-8{animation-delay:.4s}
+
+/* Page containers */
+.page{display:none}
+.page.active{display:block;animation:fadeIn .3s ease}
+
+/* Summary Stats */
+.summary-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border-light)}
+.summary-item{text-align:center;padding:12px;border-radius:var(--radius-sm)}
+.summary-item .value{font-size:20px;font-weight:800}
+.summary-item .label{font-size:10px;color:var(--text-muted);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- ========== SIDEBAR ========== -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon"><i class="fas fa-industry"></i></div>
+    <div><div class="sidebar-logo-text">MES 溯源工作台</div><div class="sidebar-logo-sub">PRODUCTION TRACEABILITY</div></div>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-status"><div class="sidebar-status-dot"></div>系统运行正常</div>
+  </div>
+</aside>
+
+<!-- ========== MAIN ========== -->
+<div class="main">
+  <header class="header">
+    <div class="header-title"><i class="fas fa-chart-line"></i><span id="headerTitle">数据看板</span></div>
+    <div class="header-right">
+      <div class="header-clock"><i class="fas fa-clock"></i><span id="headerClock"></span></div>
+      <div class="header-divider"></div>
+      <div class="header-user">
+        <div class="header-avatar">张</div>
+        <div class="header-user-info">
+          <div class="header-user-name">张三</div>
+          <div class="header-user-meta"><span class="header-user-role">生产管理员</span><span>工号: A012</span></div>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div class="content" id="contentArea"></div>
+</div>
+</div>
+
+<!-- ========== MODAL ========== -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox">
+    <div class="modal-header" id="modalHeader"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   DATA
+   ================================================================ */
+const NAV=[
+  {key:'dashboard',label:'数据看板',icon:'fa-gauge-high'},
+  {key:'material',label:'物料台账',icon:'fa-clipboard-list'},
+  {key:'semiTest',label:'半成品测试',icon:'fa-flask'},
+  {key:'productTest',label:'成品测试',icon:'fa-chart-bar'},
+  {key:'cellPackTest',label:'电芯派克测试',icon:'fa-battery-three-quarters'},
+  {key:'agingTest',label:'老化测试',icon:'fa-temperature-high'},
+  {key:'packaging',label:'设备装箱',icon:'fa-truck'},
+  {key:'personnel',label:'人员管理配置',icon:'fa-users-gear'},
+];
+
+const KPI=[
+  {title:'机柜产出',value:2845,unit:'台',trend:'+5.2%',up:true,color:'#0891b2',bg:'rgba(8,145,178,.08)',cat:'机柜'},
+  {title:'机柜合格率',value:98,unit:'%',pass:true,color:'#059669',bg:'rgba(5,150,105,.08)',cat:'机柜'},
+  {title:'单宝产出',value:2845,unit:'个',trend:'+5.2%',up:true,color:'#7c3aed',bg:'rgba(124,58,237,.08)',cat:'单宝'},
+  {title:'单宝合格率',value:98,unit:'%',pass:true,color:'#059669',bg:'rgba(5,150,105,.08)',cat:'单宝'},
+  {title:'物料到货批次',value:96,unit:'批',color:'#d97706',bg:'rgba(217,119,6,.08)',cat:'物料'},
+  {title:'物料合格率',value:96.2,unit:'%',trend:'-0.3%',up:false,color:'#e11d48',bg:'rgba(225,29,72,.08)',cat:'物料',dec:1},
+  {title:'半成品测试',value:1000,unit:'台',trend:'+5.2%',up:true,color:'#0891b2',bg:'rgba(8,145,178,.08)',cat:'半成品'},
+  {title:'半成品通过率',value:98,unit:'%',pass:true,color:'#059669',bg:'rgba(5,150,105,.08)',cat:'半成品'},
+  {title:'成品测试',value:1000,unit:'台',trend:'+5.2%',up:true,color:'#7c3aed',bg:'rgba(124,58,237,.08)',cat:'成品'},
+  {title:'成品通过率',value:98,unit:'%',pass:true,color:'#059669',bg:'rgba(5,150,105,.08)',cat:'成品'},
+  {title:'已装总箱数',value:15600,unit:'箱',color:'#d97706',bg:'rgba(217,119,6,.08)',cat:'装箱'},
+  {title:'已装总单宝数',value:15600,unit:'个',color:'#0891b2',bg:'rgba(8,145,178,.08)',cat:'装箱'},
+];
+
+const ANOMALY=[
+  {label:'机柜异常率',value:2,level:'warning'},
+  {label:'单宝异常率',value:2,level:'warning'},
+  {label:'物料异常率',value:3.8,level:'danger'},
+  {label:'半成品异常率',value:2,level:'warning'},
+  {label:'成品异常率',value:2,level:'warning'},
+];
+
+const MATERIAL=[
+  {batch:'B20231024-CELL-01',name:'电芯',supplier:'宁德新能源',supplierId:'SUP-ND-001',location:'A区-01号仓',brand:'宁德时代',spec:'10000mAh 聚合物',qty:5000,result:'合格',status:'已测试',arrival:'2023-10-24 09:30',testDate:'2023-10-25 09:31'},
+  {batch:'B20231024-PCB-02',name:'保护板',supplier:'立讯精密',supplierId:'SUP-LX-002',location:'B区-03号仓',brand:'立讯',spec:'V2.1 主控板',qty:2000,result:'合格',status:'已测试',arrival:'2023-10-24 11:15',testDate:'2023-10-25 09:32'},
+  {batch:'B20231024-PCB-03',name:'PCB',supplier:'立讯精密',supplierId:'SUP-LX-002',location:'B区-05号仓',brand:'立讯',spec:'0.6mm',qty:2000,result:'合格',status:'已测试',arrival:'2023-10-24 11:15',testDate:'2023-10-25 09:33'},
+  {batch:'B20231024-PCB-04',name:'外壳',supplier:'立讯精密',supplierId:'SUP-LX-002',location:'C区-02号仓',brand:'立讯',spec:'--',qty:2000,result:'合格',status:'已测试',arrival:'2023-10-24 11:15',testDate:'2023-10-25 09:34'},
+  {batch:'B20231024-PCB-05',name:'线材',supplier:'立讯精密',supplierId:'SUP-LX-003',location:'D区-01号仓',brand:'远东',spec:'--',qty:2000,result:'不合格',status:'已测试',arrival:'2023-10-24 11:15',testDate:'2023-10-25 09:35'},
+  {batch:'B20231024-PCB-06',name:'辅料',supplier:'立讯精密',supplierId:'SUP-LX-003',location:'D区-04号仓',brand:'远东',spec:'--',qty:2000,result:'不合格',status:'已测试',arrival:'2023-10-24 11:15',testDate:'2023-10-25 09:36'},
+];
+
+const TEST_RECORDS=[
+  {sn:'SN8839201992',pcb:'PCB-8893-X',cell:'CELL-BAT-992',operator:'工号: A012',time:'14:22:31',result:'pass'},
+  {sn:'SN8839201993',pcb:'PCB-8894-X',cell:'CELL-BAT-993',operator:'工号: B011',time:'14:23:05',result:'fail'},
+  {sn:'SN8839201994',pcb:'PCB-8895-X',cell:'CELL-BAT-994',operator:'工号: A013',time:'14:25:12',result:'pass'},
+  {sn:'SN8839201995',pcb:'PCB-8896-X',cell:'CELL-BAT-995',operator:'工号: C009',time:'14:28:33',result:'pass'},
+  {sn:'SN8839201996',pcb:'PCB-8897-X',cell:'CELL-BAT-996',operator:'工号: B012',time:'14:30:41',result:'fail'},
+  {sn:'SN8839201997',pcb:'PCB-8898-X',cell:'CELL-BAT-997',operator:'工号: A014',time:'14:32:55',result:'pass'},
+];
+
+const SEMI_TESTING=[
+  {sn:'SN8839201998',item:'过充保护测试',progress:72,elapsed:'08:15'},
+  {sn:'SN8839201999',item:'内阻检测',progress:45,elapsed:'05:30'},
+];
+const PRODUCT_TESTING=[
+  {sn:'SN8839202001',item:'满充容量测试',progress:58,elapsed:'10:22'},
+  {sn:'SN8839202002',item:'BMS通信检测',progress:90,elapsed:'15:08'},
+  {sn:'SN8839202003',item:'自耗电测试',progress:33,elapsed:'04:45'},
+];
+
+const CELL_TESTING=[
+  {sn:'CP-20260511-001',voltage:3.72,current:2.15,temp:32.5,progress:68,elapsed:'12:35',item:'充放电循环测试'},
+  {sn:'CP-20260511-002',voltage:3.85,current:1.80,temp:28.3,progress:42,elapsed:'07:20',item:'容量检测'},
+  {sn:'CP-20260511-003',voltage:3.68,current:2.50,temp:35.1,progress:85,elapsed:'18:42',item:'内阻测试'},
+];
+const CELL_COMPLETED=[
+  {sn:'CP-20260510-011',voltage:3.82,temp:30.2,result:'pass',duration:'25:18',testTime:'2026-05-10 09:15'},
+  {sn:'CP-20260510-012',voltage:3.45,temp:42.8,result:'fail',duration:'18:33',testTime:'2026-05-10 09:42'},
+  {sn:'CP-20260510-013',voltage:3.80,temp:29.5,result:'pass',duration:'24:05',testTime:'2026-05-10 10:08'},
+  {sn:'CP-20260510-014',voltage:3.78,temp:31.0,result:'pass',duration:'22:47',testTime:'2026-05-10 10:35'},
+  {sn:'CP-20260510-015',voltage:3.50,temp:40.1,result:'fail',duration:'15:22',testTime:'2026-05-10 11:00'},
+  {sn:'CP-20260510-016',voltage:3.81,temp:28.7,result:'pass',duration:'26:10',testTime:'2026-05-10 11:28'},
+];
+
+const AGING_TESTING=[
+  {sn:'AG-20260511-001',temp:55.2,voltage:3.72,loss:2.3,qualified:true,progress:65,elapsed:'32:15'},
+  {sn:'AG-20260511-002',temp:62.8,voltage:3.45,loss:5.8,qualified:false,progress:48,elapsed:'24:30'},
+  {sn:'AG-20260511-003',temp:53.1,voltage:3.78,loss:1.8,qualified:true,progress:82,elapsed:'40:05'},
+];
+const AGING_COMPLETED=[
+  {sn:'AG-20260510-011',temp:54.3,voltage:3.75,loss:2.1,result:'合格',duration:'48:30',testTime:'2026-05-10 08:15'},
+  {sn:'AG-20260510-012',temp:68.5,voltage:3.32,loss:7.2,result:'不合格',duration:'35:18',testTime:'2026-05-10 09:05'},
+  {sn:'AG-20260510-013',temp:52.8,voltage:3.80,loss:1.5,result:'合格',duration:'50:22',testTime:'2026-05-10 09:58'},
+  {sn:'AG-20260510-014',temp:55.1,voltage:3.70,loss:2.8,result:'合格',duration:'46:15',testTime:'2026-05-10 10:48'},
+  {sn:'AG-20260510-015',temp:70.2,voltage:3.28,loss:8.5,result:'不合格',duration:'30:42',testTime:'2026-05-10 11:35'},
+  {sn:'AG-20260510-016',temp:53.5,voltage:3.76,loss:1.9,result:'合格',duration:'49:08',testTime:'2026-05-10 12:25'},
+];
+
+const PACKAGING=[
+  {batch:'BOX-20231024-001',count:50,cert3c:'202001090729XXXX',oid:'已同步备案',operator:'张三',date:'2026/04/26',subs:['SN-SUB-8839201901','SN-SUB-8839201902','SN-SUB-8839201903','SN-SUB-8839201904','SN-SUB-8839201905','SN-SUB-8839201906']},
+  {batch:'BOX-20231024-002',count:50,cert3c:'202001090729XXXY',oid:'已同步备案',operator:'李四',date:'2026/04/27',subs:['SN-SUB-8839201911','SN-SUB-8839201912','SN-SUB-8839201913','SN-SUB-8839201914']},
+];
+
+const PERSONNEL=[
+  {id:1,name:'张三',account:'zhangsan',role:'admin',phone:'138****1001',status:'正常'},
+  {id:2,name:'李四',account:'lisi',role:'operator',phone:'139****2002',status:'正常'},
+  {id:3,name:'王五',account:'wangwu',role:'operator',phone:'137****3003',status:'正常'},
+  {id:4,name:'赵六',account:'zhaoliu',role:'viewer',phone:'136****4004',status:'正常'},
+  {id:5,name:'钱七',account:'qianqi',role:'operator',phone:'135****5005',status:'禁用'},
+  {id:6,name:'孙八',account:'sunba',role:'viewer',phone:'134****6006',status:'正常'},
+  {id:7,name:'周九',account:'zhoujiu',role:'admin',phone:'133****7007',status:'正常'},
+  {id:8,name:'吴十',account:'wushi',role:'operator',phone:'132****8008',status:'正常'},
+];
+const OP_LOGS={
+  1:[{time:'2026-05-11 08:30',action:'登录系统',detail:'管理员张三登录MES系统'},{time:'2026-05-10 14:22',action:'修改配置',detail:'修改半成品测试参数阈值'},{time:'2026-05-10 09:15',action:'审核数据',detail:'审核物料台账批次B20231024-CELL-01'},{time:'2026-05-09 16:40',action:'导出报表',detail:'导出本周产量统计报表'}],
+  2:[{time:'2026-05-11 07:55',action:'登录系统',detail:'操作员李四登录MES系统'},{time:'2026-05-10 15:10',action:'录入数据',detail:'录入半成品测试记录SN8839201992'},{time:'2026-05-10 10:30',action:'录入数据',detail:'录入物料台账批次数据'}],
+  3:[{time:'2026-05-11 08:10',action:'登录系统',detail:'操作员王五登录MES系统'},{time:'2026-05-10 11:20',action:'录入数据',detail:'录入成品测试记录'},{time:'2026-05-09 14:55',action:'录入数据',detail:'录入老化测试数据'}],
+  4:[{time:'2026-05-10 09:00',action:'登录系统',detail:'查看者赵六登录MES系统'},{time:'2026-05-09 13:30',action:'查看数据',detail:'查看数据看板统计信息'}],
+  5:[{time:'2026-05-08 10:20',action:'登录系统',detail:'操作员钱七登录MES系统'},{time:'2026-05-07 16:00',action:'录入数据',detail:'录入装箱数据'}],
+  6:[{time:'2026-05-10 08:45',action:'登录系统',detail:'查看者孙八登录MES系统'},{time:'2026-05-09 11:15',action:'查看数据',detail:'查看物料台账列表'}],
+  7:[{time:'2026-05-11 08:00',action:'登录系统',detail:'管理员周九登录MES系统'},{time:'2026-05-10 17:30',action:'修改配置',detail:'修改成品测试参数配置'},{time:'2026-05-10 12:00',action:'审核数据',detail:'审核装箱数据BOX-20231024-001'},{time:'2026-05-09 15:20',action:'用户管理',detail:'禁用操作员钱七账号'}],
+  8:[{time:'2026-05-10 07:50',action:'登录系统',detail:'操作员吴十登录MES系统'},{time:'2026-05-09 16:30',action:'录入数据',detail:'录入电芯派克测试数据'},{time:'2026-05-09 09:45',action:'录入数据',detail:'录入老化测试记录'}],
+};
+
+/* ================================================================
+   HELPERS
+   ================================================================ */
+let currentPage='dashboard';
+const charts={};
+
+function badge(cls,text){return `<span class="badge ${cls}">${text}</span>`}
+function badgeResult(r){return r==='pass'||r==='合格'?badge('badge-pass','<i class="fas fa-check-circle"></i> '+(r==='pass'?'合格':'合格')):badge('badge-fail','<i class="fas fa-times-circle"></i> '+(r==='fail'?'不合格':'不合格'))}
+
+function connectionBanner(type,connected){
+  const c=connected?'connected':'disconnected';
+  const icon=connected?'fa-wifi':'fa-wifi';
+  const text=connected?type+'已连接':type+'未连接';
+  const btnText=connected?'断开模拟':'重连模拟';
+  return `<div class="connection-banner ${c}" id="connBanner_${type}"><div class="connection-dot ${c}"></div><span>${text}</span><i class="fas ${icon}" style="margin-left:4px"></i><button class="connection-toggle" onclick="toggleConnection('${type}')">${btnText}</button></div>`;
+}
+
+const connState={};
+function toggleConnection(type){
+  connState[type]=!connState[type];
+  const el=document.getElementById('connBanner_'+type);
+  if(el)el.outerHTML=connectionBanner(type,connState[type]);
+}
+
+function statCards(items,cols){
+  return `<div class="stat-grid c${cols}">${items.map((s,i)=>`
+    <div class="stat-card animate-in delay-${i+1}">
+      <div class="stat-icon" style="background:${s.bg};color:${s.color}"><i class="fas ${s.icon}"></i></div>
+      <div><div class="stat-value" style="color:${s.color}">${s.value}<span class="stat-value-unit">${s.unit}</span></div><div class="stat-label">${s.label}</div></div>
+    </div>`).join('')}</div>`;
+}
+
+function testingCards(items,cols,iconCls,barColor){
+  return `<div class="testing-grid c${cols}">${items.map((it,i)=>`
+    <div class="testing-item animate-in delay-${i+1}">
+      <div class="testing-top">
+        <div class="testing-info"><div class="testing-icon" style="background:${it.item?'rgba(8,145,178,.08)':'rgba(124,58,237,.08)'};color:${barColor||'#0891b2'}"><i class="fas ${iconCls}"></i></div>
+        <div><div class="testing-sn">${it.sn}</div><div class="testing-sub">${it.item||it.testItem||'测试中'}</div></div></div>
+        <div class="testing-timer"><i class="fas fa-stopwatch"></i>${it.elapsed}</div>
+      </div>
+      ${it.metrics?`<div class="testing-metrics ${it.metricCols||'c3'}">${it.metrics.map(m=>`<div class="testing-metric"><div class="testing-metric-label">${m.label}</div><div class="testing-metric-value ${m.cls||''}">${m.value}</div></div>`).join('')}</div>`:''}
+      <div class="progress-track"><div class="progress-fill" style="width:${it.progress}%;background:linear-gradient(90deg,${barColor||'#0891b2'},${barColor==='#7c3aed'?'#a78bfa':'#06b6d4'})"></div></div>
+      <div class="progress-label"><span>测试进度</span><span class="progress-pct" style="color:${barColor||'var(--primary)'}">${it.progress}%</span></div>
+    </div>`).join('')}</div>`;
+}
+
+function sectionCard(title,icon,body,action){
+  return `<div class="card"><div class="card-header"><div class="card-header-title"><i class="fas ${icon}"></i>${title}</div>${action?`<div class="card-header-action">${action}</div>`:''}</div><div class="card-body">${body}</div></div>`;
+}
+
+function openModal(title,icon,iconBg,iconColor,bodyHtml,footerHtml,wide){
+  document.getElementById('modalHeader').innerHTML=`<div class="modal-header-icon" style="background:${iconBg};color:${iconColor}"><i class="fas ${icon}"></i></div><div class="modal-header-text"><h3>${title}</h3></div><button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>`;
+  document.getElementById('modalBody').innerHTML=bodyHtml;
+  document.getElementById('modalFooter').innerHTML=footerHtml||'<button class="btn btn-outline" onclick="closeModal()">关闭</button>';
+  document.getElementById('modalBox').className='modal'+(wide?' wide':'');
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('show')}
+
+/* ================================================================
+   PAGE RENDERERS
+   ================================================================ */
+
+/* --- Dashboard --- */
+function renderDashboard(){
+  const timeOpts=['今日','昨日','本周','上周','本月','上月','今年','去年'];
+  let h=`<div style="display:flex;justify-content:flex-end;margin-bottom:16px"><div class="time-selector">${timeOpts.map((t,i)=>`<button class="time-btn${i===0?' active':''}" onclick="this.parentNode.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">${t}</button>`).join('')}</div></div>`;
+
+  // KPI
+  h+=`<div class="kpi-grid">${KPI.map((k,i)=>`<div class="kpi-card animate-in delay-${(i%8)+1}" style="border-top:3px solid ${k.color}">
+    <div class="kpi-top"><div class="kpi-icon" style="background:${k.bg};color:${k.color}"><i class="fas ${k.pass?'fa-check-circle':k.cat==='机柜'?'fa-server':k.cat==='单宝'?'fa-bolt':k.cat==='物料'?'fa-box':k.cat==='半成品'?'fa-flask':k.cat==='成品'?'fa-wave-square':'fa-database'}"></i></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg-section);color:var(--text-muted);font-weight:600">${k.cat}</span>${k.trend?`<span class="kpi-trend ${k.up?'up':'down'}"><i class="fas fa-arrow-${k.up?'up':'down'}-right" style="font-size:9px"></i>${k.trend}</span>`:''}${k.pass?`<span class="kpi-badge pass">✓ 达标</span>`:''}</div></div>
+    <div class="kpi-value" style="color:${k.color}">${k.value.toLocaleString()}<span class="kpi-value-unit">${k.unit}</span></div>
+    <div class="kpi-label">${k.title}</div>
+    ${k.pass?`<div class="kpi-progress"><div class="kpi-progress-bar" style="width:${Math.min(k.value,100)}%;background:${k.color}"></div></div>`:''}</div>`).join('')}</div>`;
+
+  // Anomaly
+  h+=`<div class="card animate-in delay-5" style="margin-top:18px"><div class="card-header"><div class="card-header-title" style="color:var(--danger)"><i class="fas fa-triangle-exclamation"></i>异常率监控</div></div><div class="card-body"><div class="anomaly-grid">${ANOMALY.map(a=>`<div class="anomaly-item ${a.level}"><div class="anomaly-label"><i class="fas fa-exclamation-circle" style="color:${a.level==='danger'?'var(--danger)':'var(--warning)'}"></i>${a.label}</div><span class="anomaly-value" style="color:${a.level==='danger'?'var(--danger)':'var(--warning)'}">${a.value}%</span></div>`).join('')}</div></div></div>`;
+
+  // Chart rows
+  h+=`<div class="chart-grid" style="margin-top:18px">`;
+  h+=`<div class="chart-row r5"><div class="chart-card animate-in delay-5"><div class="chart-title"><i class="fas fa-chart-area" style="color:var(--primary)"></i>今日生产与测试趋势监控</div><div class="chart-container"><canvas id="chartTrend"></canvas></div></div><div class="chart-card animate-in delay-6"><div class="chart-title"><i class="fas fa-chart-pie" style="color:var(--success)"></i>成品测试结果占比</div><div class="chart-container sm"><canvas id="chartPie1"></canvas></div><div style="text-align:center;margin-top:8px"><div style="font-size:22px;font-weight:800;color:var(--success)">98.6%</div><div style="font-size:10px;color:var(--text-muted)">综合通过率</div></div></div></div>`;
+  h+=`<div class="chart-row r2"><div class="chart-card animate-in delay-6"><div class="chart-title"><i class="fas fa-wrench" style="color:var(--accent)"></i>核心供应商物料合格率对比</div><div class="chart-container"><canvas id="chartSupplier"></canvas></div></div><div class="chart-card animate-in delay-7"><div class="chart-title"><i class="fas fa-triangle-exclamation" style="color:var(--danger)"></i>异常隔离原因分析 (Top 5)</div><div class="chart-container"><canvas id="chartDefect"></canvas></div></div></div>`;
+  h+=`<div class="chart-row r3"><div class="chart-card animate-in delay-7"><div class="chart-title"><i class="fas fa-boxes-stacked" style="color:var(--warning)"></i>物料到货质量分布</div><div class="chart-container sm"><canvas id="chartMaterial"></canvas></div><div class="summary-row"><div class="summary-item" style="background:var(--success-bg);border-radius:var(--radius-sm)"><div class="value" style="color:var(--success)">11,000</div><div class="label">合格数量</div></div><div class="summary-item" style="background:var(--danger-bg);border-radius:var(--radius-sm)"><div class="value" style="color:var(--danger)">4,000</div><div class="label">不合格数量</div></div></div></div><div class="chart-card animate-in delay-8"><div class="chart-title"><i class="fas fa-shield-halved" style="color:var(--primary)"></i>全流程质量雷达图</div><div class="chart-container"><canvas id="chartRadar"></canvas></div></div><div class="chart-card animate-in delay-8"><div class="chart-title"><i class="fas fa-bullseye" style="color:var(--success)"></i>各阶段合格率仪表盘</div><div class="chart-container"><canvas id="chartGauge"></canvas></div></div></div>`;
+  h+=`<div class="chart-row r5"><div class="chart-card animate-in delay-8"><div class="chart-title"><i class="fas fa-layer-group" style="color:var(--accent)"></i>本周产量与合格/异常对比</div><div class="chart-container"><canvas id="chartWeekly"></canvas></div></div><div class="chart-card animate-in delay-8"><div class="chart-title"><i class="fas fa-box" style="color:var(--warning)"></i>装箱与备案汇总</div><div class="chart-container sm"><canvas id="chartPack"></canvas></div><div class="summary-row"><div class="summary-item" style="background:rgba(8,145,178,.06);border:1px solid rgba(8,145,178,.12);border-radius:var(--radius-sm)"><div class="value" style="color:var(--primary)">15,600</div><div class="label">已装机柜数</div></div><div class="summary-item" style="background:var(--success-bg);border:1px solid #a7f3d0;border-radius:var(--radius-sm)"><div class="value" style="color:var(--success)">100%</div><div class="label">OID备案率</div></div></div></div></div>`;
+  h+=`</div>`;
+  return h;
+}
+
+function initDashboardCharts(){
+  const base={plugins:{legend:{labels:{font:{size:11},color:'#64748b',padding:12}}},scales:{}};
+  const gridColor='#e2e8f0',tickFont={size:11},tickColor='#64748b';
+
+  // Trend
+  charts.trend=new Chart(document.getElementById('chartTrend'),{type:'line',data:{labels:['08:00','10:00','12:00','14:00','16:00','18:00'],datasets:[{label:'半成品测试量',data:[400,850,1300,1900,2400,2900],borderColor:'#0891b2',backgroundColor:'rgba(8,145,178,.1)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#0891b2',pointBorderColor:'#fff',pointBorderWidth:2},{label:'成品入库量',data:[350,800,1250,1800,2350,2845],borderColor:'#059669',backgroundColor:'rgba(5,150,105,.1)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#059669',pointBorderColor:'#fff',pointBorderWidth:2},{label:'机柜产出量',data:[380,820,1280,1850,2380,2845],borderColor:'#7c3aed',backgroundColor:'rgba(124,58,237,.08)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'#7c3aed',pointBorderColor:'#fff',pointBorderWidth:2}]},options:{...base,responsive:true,maintainAspectRatio:false,plugins:{...base.plugins,tooltip:{backgroundColor:'rgba(255,255,255,.95)',titleColor:'#475569',bodyColor:'#1e293b',borderColor:'#e2e8f0',borderWidth:1,padding:10,cornerRadius:10}},scales:{x:{grid:{color:gridColor},ticks:{font:tickFont,color:tickColor}},y:{grid:{color:gridColor},ticks:{font:tickFont,color:tickColor}}}}});
+
+  // Pie
+  charts.pie1=new Chart(document.getElementById('chartPie1'),{type:'doughnut',data:{labels:['准许入库','异常隔离'],datasets:[{data:[2845,41],backgroundColor:['#059669','#e11d48'],borderWidth:0,hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#64748b',padding:12}}}}});
+
+  // Supplier
+  charts.supplier=new Chart(document.getElementById('chartSupplier'),{type:'bar',data:{labels:['宁德新能源','立讯精密','外壳厂商','线材辅料'],datasets:[{label:'合格率',data:[99.8,99.5,98.2,85.5],backgroundColor:['#059669','#0891b2','#7c3aed','#e11d48'],borderRadius:6,barThickness:22}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{...base.plugins},scales:{x:{min:80,max:100,grid:{color:gridColor},ticks:{font:tickFont,color:tickColor,callback:v=>v+'%'}},y:{grid:{display:false},ticks:{font:{size:12},color:'#475569'}}}}});
+
+  // Defect
+  charts.defect=new Chart(document.getElementById('chartDefect'),{type:'bar',data:{labels:['过放测试','内阻超标','自耗电异常','温度异常','短路'],datasets:[{label:'异常频次',data:[18,12,6,3,2],backgroundColor:['#e11d48','#d97706','#7c3aed','#0891b2','#059669'],borderRadius:6,barThickness:36}]},options:{responsive:true,maintainAspectRatio:false,plugins:{...base.plugins},scales:{x:{grid:{color:gridColor},ticks:{font:tickFont,color:tickColor}},y:{grid:{color:gridColor},ticks:{font:tickFont,color:tickColor}}}}});
+
+  // Material pie
+  charts.material=new Chart(document.getElementById('chartMaterial'),{type:'doughnut',data:{labels:['电芯(合格)','保护板(合格)','PCB(合格)','外壳(合格)','线材(不合格)','辅料(不合格)'],datasets:[{data:[5000,2000,2000,2000,2000,2000],backgroundColor:['#059669','#0891b2','#7c3aed','#d97706','#e11d48','#dc2626'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'40%',plugins:{legend:{position:'bottom',labels:{font:{size:10},color:'#64748b',padding:8}}}}});
+
+  // Radar
+  charts.radar=new Chart(document.getElementById('chartRadar'),{type:'radar',data:{labels:['物料质量','半成品合格','成品合格','机柜合格','单宝合格','装箱达标'],datasets:[{label:'合格率',data:[96.2,98,98,98,98,100],borderColor:'#0891b2',backgroundColor:'rgba(8,145,178,.12)',pointBackgroundColor:'#0891b2',pointBorderColor:'#fff',pointBorderWidth:2,pointRadius:4,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:80,max:100,ticks:{font:{size:9},color:'#94a3b8',backdropColor:'transparent'},grid:{color:'#e2e8f0'},pointLabels:{font:{size:10},color:'#64748b'}}},plugins:{legend:{display:false}}}});
+
+  // Gauge (as polar area)
+  charts.gauge=new Chart(document.getElementById('chartGauge'),{type:'polarArea',data:{labels:['物料合格','半成品','成品','机柜'],datasets:[{data:[96.2,98,98,98],backgroundColor:['rgba(217,119,6,.3)','rgba(8,145,178,.3)','rgba(5,150,105,.3)','rgba(124,58,237,.3)'],borderColor:['#d97706','#0891b2','#059669','#7c3aed'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:80,max:100,ticks:{display:false},grid:{color:'#e2e8f0'}}},plugins:{legend:{position:'bottom',labels:{font:{size:10},color:'#64748b',padding:8}}}}});
+
+  // Weekly composed
+  charts.weekly=new Chart(document.getElementById('chartWeekly'),{type:'bar',data:{labels:['周一','周二','周三','周四','周五','周六','周日'],datasets:[{type:'line',label:'总产出',data:[420,450,480,460,510,380,145],borderColor:'#0891b2',backgroundColor:'transparent',pointBackgroundColor:'#0891b2',pointBorderColor:'#fff',pointBorderWidth:2,pointRadius:5,tension:.3,borderWidth:2.5,order:0},{label:'合格',data:[412,441,472,450,502,373,142],backgroundColor:'rgba(5,150,105,.7)',borderRadius:4,barThickness:18,order:1},{label:'异常',data:[8,9,8,10,8,7,3],backgroundColor:'rgba(225,29,72,.7)',borderRadius:4,barThickness:18,order:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{...base.plugins},scales:{x:{grid:{color:gridColor},ticks:{font:tickFont,color:tickColor}},y:{grid:{color:gridColor},ticks:{font:tickFont,color:tickColor}}}}});
+
+  // Pack pie
+  charts.pack=new Chart(document.getElementById('chartPack'),{type:'doughnut',data:{labels:['已装箱','已装机柜','已装单宝'],datasets:[{data:[15600,15600,15600],backgroundColor:['#0891b2','#7c3aed','#059669'],borderWidth:0,hoverOffset:8}]},options:{responsive:true,maintainAspectRatio:false,cutout:'50%',plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#64748b',padding:10}}}}});
+}
+
+/* --- Material --- */
+function renderMaterial(){
+  let h=connectionBanner('物料测试机',true);
+  const pass=MATERIAL.filter(m=>m.result==='合格').length,fail=MATERIAL.length-pass;
+  h+=sectionCard('物料台账列表','fa-clipboard-list',`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+      <div class="search-box"><i class="fas fa-search"></i><input id="materialSearch" placeholder="搜索物料名称 / 批次码 / 供应商" oninput="filterMaterial()"></div>
+      <div class="stats-row"><span class="stat-dot" style="background:#94a3b8"></span><span class="text-muted">总批次: <strong style="color:var(--text)">${MATERIAL.length}</strong></span><span class="stat-dot" style="background:var(--success)"></span><span class="text-muted">合格: <strong style="color:var(--success)">${pass}</strong></span><span class="stat-dot" style="background:var(--danger)"></span><span class="text-muted">不合格: <strong style="color:var(--danger)">${fail}</strong></span></div>
+    </div>
+    <div class="table-wrap"><table class="data-table" id="materialTable"><thead><tr><th>物料批次码</th><th>物料名称</th><th>供应商</th><th>供应商编号</th><th>品牌名称</th><th>存放位置</th><th>规格</th><th>到货数量</th><th>测试结果</th><th>状态</th><th>到货日期</th><th>测试日期</th><th>操作</th></tr></thead><tbody>${MATERIAL.map((m,i)=>`<tr data-search="${m.name} ${m.batch} ${m.supplier}"><td class="mono text-sm">${m.batch}</td><td class="font-bold">${m.name}</td><td>${m.supplier}</td><td class="mono text-sm text-primary">${m.supplierId}</td><td class="font-bold">${m.brand}</td><td><span class="badge badge-location">${m.location}</span></td><td class="text-muted text-sm">${m.spec}</td><td class="font-bold">${m.qty.toLocaleString()}</td><td>${badgeResult(m.result)}</td><td>${badge('badge-tested',m.status)}</td><td class="text-muted text-sm" style="white-space:nowrap">${m.arrival}</td><td class="text-muted text-sm" style="white-space:nowrap">${m.testDate}</td><td><button class="btn-text cyan" onclick="showMaterialReport(${i})"><i class="fas fa-file-lines"></i> 测试报告</button></td></tr>`).join('')}</tbody></table></div>`,`<button class="btn btn-primary" onclick="showMaterialEntry()"><i class="fas fa-plus"></i> 物料录入</button>`);
+  return h;
+}
+function filterMaterial(){const q=document.getElementById('materialSearch').value.toLowerCase();document.querySelectorAll('#materialTable tbody tr').forEach(r=>{r.style.display=r.dataset.search.toLowerCase().includes(q)?'':'none'})}
+function showMaterialEntry(){openModal('物料录入','fa-plus','rgba(8,145,178,.1)','var(--primary)',`<div class="form-grid"><div class="form-group"><label class="form-label">物料名称 <span class="req">*</span></label><input class="form-input" placeholder="例如：电芯"></div><div class="form-group"><label class="form-label">供应商 <span class="req">*</span></label><input class="form-input" placeholder="例如：宁德新能源"></div><div class="form-group"><label class="form-label">供应商编号</label><input class="form-input" placeholder="例如：SUP-ND-001"></div><div class="form-group"><label class="form-label">品牌名称</label><input class="form-input" placeholder="例如：宁德时代"></div><div class="form-group"><label class="form-label">存放位置</label><input class="form-input" placeholder="例如：A区-01号仓"></div><div class="form-group"><label class="form-label">规格型号</label><input class="form-input" placeholder="例如：10000mAh 聚合物"></div><div class="form-group"><label class="form-label">到货数量 <span class="req">*</span></label><input class="form-input" type="number" placeholder="0"></div><div class="form-group"><label class="form-label">到货日期</label><input class="form-input" type="datetime-local"></div></div>`,`<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="closeModal()"><i class="fas fa-save"></i> 提交录入</button>`)}
+function showMaterialReport(i){const m=MATERIAL[i];openModal('物料测试报告','fa-file-lines','rgba(5,150,105,.1)','var(--success)',`<div class="report-section"><div class="report-section-title"><div class="dot" style="background:var(--primary)"></div>基本信息</div><div class="report-grid"><div class="report-item"><span class="report-item-label">批次码:</span><span class="report-item-value mono">${m.batch}</span></div><div class="report-item"><span class="report-item-label">物料名称:</span><span class="report-item-value">${m.name}</span></div><div class="report-item"><span class="report-item-label">供应商:</span><span class="report-item-value">${m.supplier}</span></div><div class="report-item"><span class="report-item-label">供应商编号:</span><span class="report-item-value mono">${m.supplierId}</span></div><div class="report-item"><span class="report-item-label">品牌:</span><span class="report-item-value">${m.brand}</span></div><div class="report-item"><span class="report-item-label">存放位置:</span><span class="report-item-value">${m.location}</span></div><div class="report-item"><span class="report-item-label">到货数量:</span><span class="report-item-value">${m.qty.toLocaleString()}</span></div><div class="report-item"><span class="report-item-label">状态:</span><span class="report-item-value">${badge('badge-tested',m.status)}</span></div></div></div><div class="report-section"><div class="report-section-title"><div class="dot" style="background:var(--success)"></div>检验项目明细</div><table class="report-table"><thead><tr><th>检验项目</th><th>标准值</th><th>实测值</th><th>结果</th></tr></thead><tbody><tr><td>外观检查</td><td>无缺陷</td><td>合格</td><td>${badge('badge-pass','<i class="fas fa-check-circle"></i> 合格')}</td></tr><tr><td>尺寸检测</td><td>公差 ±0.1mm</td><td>±0.05mm</td><td>${badge('badge-pass','<i class="fas fa-check-circle"></i> 合格')}</td></tr><tr><td>电性能测试</td><td>内阻 ≤50mΩ</td><td>${m.result==='合格'?'35mΩ':'68mΩ'}</td><td>${badgeResult(m.result)}</td></tr><tr><td>耐压测试</td><td>≥500V</td><td>550V</td><td>${badge('badge-pass','<i class="fas fa-check-circle"></i> 合格')}</td></tr></tbody></table></div><div class="report-verdict ${m.result==='合格'?'pass':'fail'}"><div class="report-verdict-icon">${m.result==='合格'?'<i class="fas fa-check-circle" style="color:var(--success)"></i>':'<i class="fas fa-times-circle" style="color:var(--danger)"></i>'}</div><div><div class="report-verdict-text" style="color:${m.result==='合格'?'var(--success)':'var(--danger)'}">综合判定：${m.result}</div><div class="report-verdict-sub">${m.result==='合格'?'所有检验项目均在标准范围内':'存在检验项目超出标准范围'}</div></div></div>`,'',true)}
+
+/* --- Test Pages Helper --- */
+function renderTestPage(type,testingData,completedData,stats,testingIcon,testingBarColor,reportTitle,reportItems){
+  const isSemi=type==='semi';
+  const iconName=isSemi?'fa-flask':'fa-wave-square';
+  const iconColor=isSemi?'var(--primary)':'var(--accent)';
+  const statsItems=stats||[
+    {label:'测试总数',value:TEST_RECORDS.length,unit:'台',color:'#0891b2',bg:'rgba(8,145,178,.08)',icon:'fa-flask'},
+    {label:'通过数量',value:TEST_RECORDS.filter(r=>r.result==='pass').length,unit:'台',color:'#059669',bg:'rgba(5,150,105,.08)',icon:'fa-check-circle'},
+    {label:'异常数量',value:TEST_RECORDS.filter(r=>r.result==='fail').length,unit:'台',color:'#e11d48',bg:'rgba(225,29,72,.08)',icon:'fa-times-circle'},
+    {label:'通过率',value:Math.round(TEST_RECORDS.filter(r=>r.result==='pass').length/TEST_RECORDS.length*100),unit:'%',color:'#7c3aed',bg:'rgba(124,58,237,.08)',icon:'fa-bullseye'},
+  ];
+  let h=connectionBanner((isSemi?'半成品':'成品')+'测试机',true);
+  h+=statCards(statsItems,4);
+  h+=`<div style="margin-top:16px">${sectionCard('正在测试','fa-bolt',testingCards(testingData.map(t=>({sn:t.sn,testItem:t.item,progress:t.progress,elapsed:t.elapsed,metrics:[],metricCols:'c2'})),isSemi?2:3,testingIcon,testingBarColor),'')}</div>`;
+
+  const tableRows=TEST_RECORDS.map((r,i)=>`<tr><td class="mono font-bold">${r.sn}</td><td class="mono text-sm text-muted">${r.pcb}</td><td class="mono text-sm text-muted">${r.cell}</td><td class="text-muted">${r.operator}</td><td class="text-muted">${r.time}</td><td>${badgeResult(r.result)}</td><td><button class="btn-text cyan" onclick="showTestReport('${type}',${i})"><i class="fas fa-file-lines"></i> 测试报告</button></td></tr>`).join('');
+  h+=`<div style="margin-top:16px">${sectionCard('已完成测试记录',iconName,`<div class="table-wrap"><table class="data-table"><thead><tr><th>机柜 SN 码</th><th>主板二维码</th><th>电芯二维码</th><th>操作员</th><th>测试时间</th><th>测试结果</th><th>操作</th></tr></thead><tbody>${tableRows}</tbody></table></div>`,'')}</div>`;
+  return h;
+}
+
+function showTestReport(type,idx){
+  const r=TEST_RECORDS[idx];const isSemi=type==='semi';
+  const items=isSemi?[['过充保护','4.25V ±0.05V','4.22V',true],['过放保护','2.40V ±0.05V',r.result==='pass'?'2.42V':'2.10V',r.result==='pass'],['短路保护','≤10ms 断开','8ms',true],['内阻测试','≤50mΩ',r.result==='pass'?'32mΩ':'78mΩ',r.result==='pass'],['温度保护','≤60°C','45°C',true]]: [['满充容量','≥10000mAh',r.result==='pass'?'10250mAh':'9600mAh',r.result==='pass'],['循环寿命','≥500次','520次',true],['自耗电测试','≤3%/月',r.result==='pass'?'2.1%':'5.8%',r.result==='pass'],['温升测试','≤10°C','7°C',true],['BMS通信','正常响应','正常',true]];
+  const rows=items.map(it=>`<tr><td>${it[0]}</td><td>${it[1]}</td><td>${it[2]}</td><td>${it[3]?badge('badge-pass','<i class="fas fa-check-circle"></i> 合格'):badge('badge-fail','<i class="fas fa-times-circle"></i> 不合格')}</td></tr>`).join('');
+  openModal(isSemi?'半成品测试报告':'成品测试报告','fa-file-lines',isSemi?'rgba(8,145,178,.1)':'rgba(124,58,237,.1)',isSemi?'var(--primary)':'var(--accent)',`<div class="report-section"><div class="report-section-title"><div class="dot" style="background:${isSemi?'var(--primary)':'var(--accent)'}"></div>设备信息</div><div class="report-grid"><div class="report-item"><span class="report-item-label">SN码:</span><span class="report-item-value mono">${r.sn}</span></div><div class="report-item"><span class="report-item-label">主板:</span><span class="report-item-value mono">${r.pcb}</span></div><div class="report-item"><span class="report-item-label">电芯:</span><span class="report-item-value mono">${r.cell}</span></div><div class="report-item"><span class="report-item-label">操作员:</span><span class="report-item-value">${r.operator}</span></div><div class="report-item"><span class="report-item-label">测试时间:</span><span class="report-item-value">${r.time}</span></div><div class="report-item"><span class="report-item-label">测试结果:</span>${badgeResult(r.result)}</div></div></div><div class="report-section"><div class="report-section-title"><div class="dot" style="background:var(--success)"></div>测试项明细</div><table class="report-table"><thead><tr><th>测试项目</th><th>标准值</th><th>实测值</th><th>结果</th></tr></thead><tbody>${rows}</tbody></table></div><div class="report-verdict ${r.result==='pass'?'pass':'fail'}"><div class="report-verdict-icon">${r.result==='pass'?'<i class="fas fa-check-circle" style="color:var(--success)"></i>':'<i class="fas fa-times-circle" style="color:var(--danger)"></i>'}</div><div><div class="report-verdict-text" style="color:${r.result==='pass'?'var(--success)':'var(--danger)'}">综合判定：${r.result==='pass'?'合格':'不合格'}</div><div class="report-verdict-sub">${r.result==='pass'?'所有检测项目均在标准范围内':'存在检测项目超出标准范围'}</div></div></div>`,'',true);
+}
+
+/* --- Cell Pack Test --- */
+function renderCellPackTest(){
+  let h=connectionBanner('派克测试机',true);
+  h+=statCards([
+    {label:'正在测试',value:CELL_TESTING.length,unit:'个',color:'#0891b2',bg:'rgba(8,145,178,.08)',icon:'fa-battery-three-quarters'},
+    {label:'已完成测试',value:CELL_COMPLETED.length,unit:'个',color:'#059669',bg:'rgba(5,150,105,.08)',icon:'fa-check-circle'},
+    {label:'合格数量',value:CELL_COMPLETED.filter(r=>r.result==='pass').length,unit:'个',color:'#7c3aed',bg:'rgba(124,58,237,.08)',icon:'fa-bullseye'},
+    {label:'异常数量',value:CELL_COMPLETED.filter(r=>r.result==='fail').length,unit:'个',color:'#e11d48',bg:'rgba(225,29,72,.08)',icon:'fa-times-circle'},
+  ],4);
+  const testItems=CELL_TESTING.map(t=>({sn:t.sn,testItem:t.item,progress:t.progress,elapsed:t.elapsed,metricCols:'c3',metrics:[
+    {label:'电压',value:t.voltage+'V',cls:'text-primary'},
+    {label:'电流',value:t.current+'A',cls:'text-warning'},{label:'温度',value:t.temp+'°C',cls:t.temp>35?'text-danger':'text-success'}]}));
+  h+=`<div style="margin-top:16px">${sectionCard('正在测试','fa-battery-three-quarters',testingCards(testItems,3,'fa-battery-three-quarters','#0891b2'),'')}</div>`;
+  const rows=CELL_COMPLETED.map((r,i)=>`<tr><td class="mono font-bold">${r.sn}</td><td class="font-bold" style="color:${r.voltage>=3.7?'var(--success)':'var(--danger)'}">${r.voltage}V</td><td class="${r.temp>38?'text-danger':''}">${r.temp}°C</td><td>${badgeResult(r.result)}</td><td class="mono text-sm text-muted">${r.duration}</td><td class="text-sm text-muted" style="white-space:nowrap">${r.testTime}</td><td><button class="btn-text cyan" onclick="showCellReport(${i})"><i class="fas fa-file-lines"></i> 测试报告</button></td></tr>`).join('');
+  h+=`<div style="margin-top:16px">${sectionCard('已完成测试记录','fa-check-circle',`<div class="table-wrap"><table class="data-table"><thead><tr><th>电芯 SN 码</th><th>电压</th><th>温度</th><th>测试结果</th><th>测试时长</th><th>测试时间</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>`,'')}</div>`;
+  return h;
+}
+function showCellReport(i){const r=CELL_COMPLETED[i];openModal('电芯派克测试报告','fa-file-lines','rgba(8,145,178,.1)','var(--primary)',`<div class="report-section"><div class="report-section-title"><div class="dot" style="background:var(--primary)"></div>基本信息</div><div class="report-grid"><div class="report-item"><span class="report-item-label">SN码:</span><span class="report-item-value mono">${r.sn}</span></div><div class="report-item"><span class="report-item-label">电压:</span><span class="report-item-value">${r.voltage}V</span></div><div class="report-item"><span class="report-item-label">温度:</span><span class="report-item-value">${r.temp}°C</span></div><div class="report-item"><span class="report-item-label">测试时长:</span><span class="report-item-value">${r.duration}</span></div><div class="report-item"><span class="report-item-label">测试时间:</span><span class="report-item-value">${r.testTime}</span></div><div class="report-item"><span class="report-item-label">测试结果:</span>${badgeResult(r.result)}</div></div></div><div class="report-verdict ${r.result==='pass'?'pass':'fail'}"><div class="report-verdict-icon">${r.result==='pass'?'<i class="fas fa-check-circle" style="color:var(--success)"></i>':'<i class="fas fa-times-circle" style="color:var(--danger)"></i>'}</div><div><div class="report-verdict-text" style="color:${r.result==='pass'?'var(--success)':'var(--danger)'}">综合判定：${r.result==='pass'?'合格':'不合格'}</div><div class="report-verdict-sub">${r.result==='pass'?'所有检测项目均在标准范围内':'存在检测项目超出标准范围'}</div></div></div>`,'',true)}
+
+/* --- Aging Test --- */
+function renderAgingTest(){
+  let h=connectionBanner('老化测试机',true);
+  h+=statCards([
+    {label:'正在测试',value:AGING_TESTING.length,unit:'台',color:'#0891b2',bg:'rgba(8,145,178,.08)',icon:'fa-temperature-high'},
+    {label:'已完成测试',value:AGING_COMPLETED.length,unit:'台',color:'#059669',bg:'rgba(5,150,105,.08)',icon:'fa-check-circle'},
+    {label:'合格数量',value:AGING_COMPLETED.filter(r=>r.result==='合格').length,unit:'台',color:'#7c3aed',bg:'rgba(124,58,237,.08)',icon:'fa-bullseye'},
+    {label:'不合格数量',value:AGING_COMPLETED.filter(r=>r.result==='不合格').length,unit:'台',color:'#e11d48',bg:'rgba(225,29,72,.08)',icon:'fa-times-circle'},
+  ],4);
+  const testItems=AGING_TESTING.map(t=>({sn:t.sn,testItem:'老化测试中',progress:t.progress,elapsed:t.elapsed,metricCols:'c2',metrics:[
+    {label:'温度',value:t.temp+'°C',cls:t.temp>60?'text-danger':'text-success'},
+    {label:'电压',value:t.voltage+'V',cls:t.voltage<3.5?'text-danger':'text-primary'},
+    {label:'损耗',value:t.loss+'%',cls:t.loss>5?'text-danger':'text-warning'},
+    {label:'是否合格',value:t.qualified?'合格':'不合格',cls:t.qualified?'text-success':'text-danger'}]}));
+  h+=`<div style="margin-top:16px">${sectionCard('正在老化测试','fa-temperature-high',testingCards(testItems,3,'fa-temperature-high','#d97706'),'')}</div>`;
+  const rows=AGING_COMPLETED.map((r,i)=>`<tr><td class="mono font-bold">${r.sn}</td><td class="${r.temp>60?'text-danger':''}">${r.temp}°C</td><td class="${r.voltage<3.5?'text-danger':''}">${r.voltage}V</td><td class="${r.loss>5?'text-danger':'text-warning'}">${r.loss}%</td><td>${badgeResult(r.result)}</td><td class="mono text-sm text-muted">${r.duration}</td><td class="text-sm text-muted" style="white-space:nowrap">${r.testTime}</td><td><button class="btn-text cyan" onclick="showAgingReport(${i})"><i class="fas fa-file-lines"></i> 测试报告</button></td></tr>`).join('');
+  h+=`<div style="margin-top:16px">${sectionCard('已完成老化测试记录','fa-check-circle',`<div class="table-wrap"><table class="data-table"><thead><tr><th>设备 SN 码</th><th>温度</th><th>电压</th><th>损耗</th><th>测试结果</th><th>测试时长</th><th>测试时间</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>`,'')}</div>`;
+  return h;
+}
+function showAgingReport(i){const r=AGING_COMPLETED[i];openModal('老化测试报告','fa-file-lines','rgba(217,119,6,.1)','var(--warning)',`<div class="report-section"><div class="report-section-title"><div class="dot" style="background:var(--warning)"></div>设备信息</div><div class="report-grid"><div class="report-item"><span class="report-item-label">SN码:</span><span class="report-item-value mono">${r.sn}</span></div><div class="report-item"><span class="report-item-label">温度:</span><span class="report-item-value">${r.temp}°C</span></div><div class="report-item"><span class="report-item-label">电压:</span><span class="report-item-value">${r.voltage}V</span></div><div class="report-item"><span class="report-item-label">损耗:</span><span class="report-item-value">${r.loss}%</span></div><div class="report-item"><span class="report-item-label">测试时长:</span><span class="report-item-value">${r.duration}</span></div><div class="report-item"><span class="report-item-label">测试结果:</span>${badgeResult(r.result)}</div></div></div><div class="report-verdict ${r.result==='合格'?'pass':'fail'}"><div class="report-verdict-icon">${r.result==='合格'?'<i class="fas fa-check-circle" style="color:var(--success)"></i>':'<i class="fas fa-times-circle" style="color:var(--danger)"></i>'}</div><div><div class="report-verdict-text" style="color:${r.result==='合格'?'var(--success)':'var(--danger)'}">综合判定：${r.result}</div><div class="report-verdict-sub">${r.result==='合格'?'老化测试各项指标均在标准范围内':'老化测试存在指标超出标准范围'}</div></div></div>`,'',true)}
+
+/* --- Packaging --- */
+function renderPackaging(){
+  let h=statCards([
+    {label:'已装总箱数',value:15600,unit:'箱',color:'#d97706',bg:'rgba(217,119,6,.08)',icon:'fa-box'},
+    {label:'已装机柜数',value:15600,unit:'台',color:'#0891b2',bg:'rgba(8,145,178,.08)',icon:'fa-database'},
+    {label:'OID 备案率',value:100,unit:'%',color:'#059669',bg:'rgba(5,150,105,.08)',icon:'fa-shield-halved'},
+  ],3);
+  const rows=PACKAGING.map((r,i)=>`<tr><td class="mono font-bold">${r.batch}</td><td class="font-bold">${r.count} 台</td><td class="mono text-sm text-muted">${r.cert3c}</td><td>${badge('badge-synced','<i class="fas fa-check-circle"></i> '+r.oid)}</td><td>${r.operator}</td><td class="text-muted">${r.date}</td><td><button class="btn-text cyan" onclick="togglePackSubs(${i})"><i class="fas fa-chevron-right" id="packArrow${i}" style="transition:transform .2s"></i> 子件编号</button></td></tr><tr id="packSubs${i}" style="display:none"><td colspan="7" style="background:var(--bg-section);padding:12px 32px"><div style="font-size:11px;color:var(--text-sec);margin-bottom:8px;font-weight:600">子件编号列表 (${r.subs.length} 件)</div><div style="display:flex;flex-wrap:wrap;gap:6px">${r.subs.map(s=>`<span style="padding:4px 10px;background:#fff;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:'SF Mono',Monaco,monospace;color:var(--text-sec)">${s}</span>`).join('')}</div></td></tr>`).join('');
+  h+=`<div style="margin-top:16px">${sectionCard('出厂备案与装箱关联','fa-truck',`<div style="margin-bottom:12px"><div class="search-box"><i class="fas fa-search"></i><input placeholder="装箱批次码 / 设备编号"></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>外箱批次码</th><th>包含单品数量</th><th>3C 认证编号</th><th>OID 监管状态</th><th>操作员</th><th>装箱日期</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>`,`<button class="btn btn-primary" onclick="showPackEntry()"><i class="fas fa-plus"></i> 数据录入</button>`)}</div>`;
+  return h;
+}
+function togglePackSubs(i){const el=document.getElementById('packSubs'+i);const arrow=document.getElementById('packArrow'+i);if(el.style.display==='none'){el.style.display='table-row';arrow.style.transform='rotate(90deg)'}else{el.style.display='none';arrow.style.transform='rotate(0)'}}
+function showPackEntry(){openModal('装箱数据录入','fa-plus','rgba(217,119,6,.1)','var(--warning)',`<div class="form-grid"><div class="form-group"><label class="form-label">外箱批次码 <span class="req">*</span></label><input class="form-input" placeholder="例如：BOX-20231024-003"></div><div class="form-group"><label class="form-label">包含单品数量 <span class="req">*</span></label><input class="form-input" type="number" placeholder="0"></div><div class="form-group"><label class="form-label">3C 认证编号</label><input class="form-input" placeholder="例如：202001090729XXXX"></div><div class="form-group"><label class="form-label">OID 监管状态</label><select class="form-input"><option>待同步备案</option><option>已同步备案</option></select></div><div class="form-group"><label class="form-label">操作员</label><input class="form-input" value="当前登录用户" readonly></div><div class="form-group"><label class="form-label">装箱日期</label><input class="form-input" type="datetime-local"></div></div><div class="form-group" style="margin-top:12px"><label class="form-label">子件编号（多个编号用逗号分隔）</label><textarea class="form-input" rows="3" placeholder="SN-SUB-8839201901, SN-SUB-8839201902, ..." style="resize:none"></textarea></div>`,`<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="closeModal()"><i class="fas fa-save"></i> 提交录入</button>`)}
+
+/* --- Personnel --- */
+function renderPersonnel(){
+  const roleMap={admin:{label:'管理员',cls:'badge-admin'},operator:{label:'操作员',cls:'badge-operator'},viewer:{label:'查看者',cls:'badge-viewer'}};
+  const rows=PERSONNEL.map(p=>`<tr><td class="font-bold">${p.name}</td><td class="mono text-sm text-muted">${p.account}</td><td>${badge(roleMap[p.role].cls,roleMap[p.role].label)}</td><td>${p.phone}</td><td>${badge(p.status==='正常'?'badge-pass':'badge-disabled',p.status)}</td><td><div style="display:flex;gap:10px"><button class="btn-text red" onclick="alert('确认删除用户 ${p.name}？')"><i class="fas fa-trash-alt"></i> 删除</button><button class="btn-text amber"><i class="fas fa-user-slash"></i> 禁用</button><button class="btn-text cyan" onclick="showOpLog(${p.id})"><i class="fas fa-clock-rotate-left"></i> 操作日志</button></div></td></tr>`).join('');
+  return sectionCard('人员管理列表','fa-users-gear',`<div class="table-wrap"><table class="data-table"><thead><tr><th>员工姓名</th><th>账号</th><th>权限</th><th>手机号</th><th>账号状态</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div>`,`<button class="btn btn-primary" onclick="showAddEmployee()"><i class="fas fa-user-plus"></i> 添加员工</button>`);
+}
+function showAddEmployee(){openModal('添加员工','fa-user-plus','rgba(8,145,178,.1)','var(--primary)',`<div class="form-grid"><div class="form-group"><label class="form-label">员工姓名 <span class="req">*</span></label><input class="form-input" placeholder="请输入姓名"></div><div class="form-group"><label class="form-label">账号 <span class="req">*</span></label><input class="form-input" placeholder="请输入账号"></div><div class="form-group"><label class="form-label">权限 <span class="req">*</span></label><select class="form-input"><option value="operator">操作员</option><option value="viewer">查看者</option><option value="admin">管理员</option></select></div><div class="form-group"><label class="form-label">手机号 <span class="req">*</span></label><input class="form-input" type="tel" placeholder="请输入手机号"></div></div>`,`<button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="closeModal()"><i class="fas fa-save"></i> 确认添加</button>`)}
+function showOpLog(id){const p=PERSONNEL.find(x=>x.id===id);const logs=OP_LOGS[id]||[];openModal('操作日志 - '+p.name,'fa-clock-rotate-left','rgba(124,58,237,.1)','var(--accent)',logs.length?`<div style="display:flex;flex-direction:column;gap:10px">${logs.map(l=>`<div class="log-item"><div class="log-icon"><i class="fas fa-clock-rotate-left"></i></div><div class="log-content"><div class="log-top"><span class="log-action">${l.action}</span><span class="log-time">${l.time}</span></div><div class="log-detail">${l.detail}</div></div></div>`).join('')}</div>`:`<div style="text-align:center;padding:40px;color:var(--text-muted)">暂无操作记录</div>`,'')}
+
+/* ================================================================
+   ROUTER
+   ================================================================ */
+function navigate(page){
+  currentPage=page;
+  // Destroy old charts
+  Object.values(charts).forEach(c=>c.destroy());Object.keys(charts).forEach(k=>delete charts[k]);
+
+  document.querySelectorAll('.nav-item').forEach(n=>{n.classList.toggle('active',n.dataset.key===page)});
+  document.getElementById('headerTitle').textContent=NAV.find(n=>n.key===page)?.label||'数据看板';
+
+  const area=document.getElementById('contentArea');
+  const renderers={dashboard:renderDashboard,material:renderMaterial,semiTest:()=>renderTestPage('semi',SEMI_TESTING,null,null,'fa-flask','#0891b2'),productTest:()=>renderTestPage('product',PRODUCT_TESTING,null,null,'fa-wave-square','#7c3aed'),cellPackTest:renderCellPackTest,agingTest:renderAgingTest,packaging:renderPackaging,personnel:renderPersonnel};
+  area.innerHTML=(renderers[page]||renderers.dashboard)();
+  area.scrollTop=0;
+
+  if(page==='dashboard')setTimeout(initDashboardCharts,100);
+}
+
+/* ================================================================
+   INIT
+   ================================================================ */
+// Sidebar
+document.getElementById('sidebarNav').innerHTML=NAV.map(n=>`<button class="nav-item${n.key==='dashboard'?' active':''}" data-key="${n.key}" onclick="navigate('${n.key}')"><i class="fas ${n.icon}"></i>${n.label}<i class="fas fa-chevron-right nav-item-arrow"></i></button>`).join('');
+
+// Clock
+function updateClock(){const d=new Date();document.getElementById('headerClock').textContent=d.toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})}
+updateClock();setInterval(updateClock,1000);
+
+// Init page
+navigate('dashboard');
+</script>
+</body>
+</html>
