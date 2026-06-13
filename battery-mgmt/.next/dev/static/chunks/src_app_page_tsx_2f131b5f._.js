@@ -7,7 +7,7 @@
   "static/chunks/node_modules_framer-motion_dist_es_1c28304b._.js",
   "static/chunks/node_modules_lodash_4a69034e._.js",
   "static/chunks/node_modules_recharts_es6_c92f87d3._.js",
-  "static/chunks/node_modules_lucide-react_dist_esm_icons_249110fc._.js",
+  "static/chunks/node_modules_lucide-react_dist_esm_icons_a5f41dfd._.js",
   "static/chunks/node_modules_d0bc1816._.js"
 ],
     source: "dynamic"
