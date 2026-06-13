@@ -90,3 +90,4 @@ For more information, see https://radix-ui.com/primitives/docs/components/dialog
 [05:02:12.845] Server  LOG     ✓ Compiled in 215ms
 [05:02:12.879] Server  WARN    ⚠ Fast Refresh had to perform a full reload due to a runtime error.
 [05:02:14.585] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[05:20:54.698] Server  LOG     ✓ Compiled in 577ms

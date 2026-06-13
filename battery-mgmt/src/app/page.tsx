@@ -329,8 +329,8 @@ const cellPcbAssemblyData = [
   { id: 'ASM-CP-003', cellSn: 'CELL-20260511-003', pcbSn: 'PCB-20260511-003', time: '2026-05-11 09:10', operator: '张三', status: '已组装', testStatus: '已测试', testResult: '不合格' },
   { id: 'ASM-CP-004', cellSn: 'CELL-20260511-004', pcbSn: 'PCB-20260511-004', time: '', operator: '', status: '待组装', testStatus: '未测试', testResult: '' },
   { id: 'ASM-CP-005', cellSn: 'CELL-20260511-005', pcbSn: 'PCB-20260511-005', time: '', operator: '', status: '待组装', testStatus: '未测试', testResult: '' },
-  { id: 'ASM-CP-006', cellSn: 'CELL-20260512-006', pcbSn: 'PCB-20260512-006', time: '2026-05-12 10:20', operator: '王五', status: '组装失败', testStatus: '未测试', testResult: '' },
-  { id: 'ASM-CP-007', cellSn: 'CELL-20260512-007', pcbSn: 'PCB-20260512-007', time: '2026-05-12 11:05', operator: '赵六', status: '组装失败', testStatus: '未测试', testResult: '' },
+  { id: 'ASM-CP-006', cellSn: 'CELL-20260512-006', pcbSn: 'PCB-20260512-006', time: '2026-05-12 10:20', operator: '王五', status: '组装失败', testStatus: '未测试', testResult: '', failReason: '电芯与PCB焊接不良' },
+  { id: 'ASM-CP-007', cellSn: 'CELL-20260512-007', pcbSn: 'PCB-20260512-007', time: '2026-05-12 11:05', operator: '赵六', status: '组装失败', testStatus: '未测试', testResult: '', failReason: 'PCB板变形导致接触异常' },
 ]
 
 /* 成品组装 - 半成品与外壳组装数据 */
@@ -339,7 +339,7 @@ const semiShellAssemblyData = [
   { id: 'ASM-SS-002', cellSn: 'ASM-CP-002', pcbSn: 'SHELL-20260510-002', shellSn: 'PB-10000mAh-A', time: '2026-05-10 09:50', operator: '王五', status: '已组装', testStatus: '已测试', testResult: '合格' },
   { id: 'ASM-SS-003', cellSn: 'ASM-CP-003', pcbSn: 'SHELL-20260511-003', shellSn: 'PB-20000mAh-B', time: '2026-05-11 10:15', operator: '李四', status: '已组装', testStatus: '已测试', testResult: '不合格' },
   { id: 'ASM-SS-004', cellSn: 'ASM-CP-004', pcbSn: 'SHELL-20260511-004', shellSn: 'PB-20000mAh-B', time: '', operator: '', status: '待组装', testStatus: '未测试', testResult: '' },
-  { id: 'ASM-SS-005', cellSn: 'ASM-CP-005', pcbSn: 'SHELL-20260512-005', shellSn: 'PB-10000mAh-A', time: '2026-05-12 14:30', operator: '赵六', status: '组装失败', testStatus: '未测试', testResult: '' },
+  { id: 'ASM-SS-005', cellSn: 'ASM-CP-005', pcbSn: 'SHELL-20260512-005', shellSn: 'PB-10000mAh-A', time: '2026-05-12 14:30', operator: '赵六', status: '组装失败', testStatus: '未测试', testResult: '', failReason: '外壳卡扣断裂无法固定' },
 ]
 
 /* 生产工单数据 */
@@ -3384,7 +3384,7 @@ function AssemblyPage() {
         ) : (
           <div className="overflow-x-auto rounded-lg border border-rose-200">
             <table className="data-table">
-              <thead><tr className="bg-rose-50/50"><th>组装编号</th><th>组装类型</th><th>电芯SN码</th><th>PCB SN码</th><th>外壳SN码</th><th>组装时间</th><th>操作员</th><th>状态</th></tr></thead>
+              <thead><tr className="bg-rose-50/50"><th>组装编号</th><th>组装类型</th><th>电芯SN码</th><th>PCB SN码</th><th>外壳SN码</th><th>组装时间</th><th>操作员</th><th>状态</th><th>失败原因</th></tr></thead>
               <tbody>
                 {filteredFailed.length > 0 ? filteredFailed.map((r, i) => (
                   <tr key={i} className="hover:bg-rose-50/30">
@@ -3396,9 +3396,10 @@ function AssemblyPage() {
                     <td className="text-slate-500 text-xs whitespace-nowrap">{r.time || '-'}</td>
                     <td className="text-slate-600">{r.operator || '-'}</td>
                     <td><span className="text-xs px-2 py-0.5 rounded-full font-medium bg-rose-50 text-rose-600">组装失败</span></td>
+                    <td><span className="text-xs text-rose-700 font-medium">{r.failReason || '-'}</span></td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={8} className="text-center py-12 text-slate-400">
+                  <tr><td colSpan={9} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center gap-2">
                       <CheckCircle2 className="w-10 h-10 text-emerald-300" />
                       <span className="text-sm">暂无组装失败记录</span>
