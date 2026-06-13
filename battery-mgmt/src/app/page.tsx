@@ -204,9 +204,21 @@ const testRecords = [
 
 /* 电芯派克 - 正在测试数据 */
 const cellPackTestingData = [
-  { sn: 'CP-20260511-001', voltage: 3.72, current: 2.15, temperature: 32.5, progress: 68, elapsed: '12:35', testItem: '充放电循环测试' },
-  { sn: 'CP-20260511-002', voltage: 3.85, current: 1.80, temperature: 28.3, progress: 42, elapsed: '07:20', testItem: '容量检测' },
-  { sn: 'CP-20260511-003', voltage: 3.68, current: 2.50, temperature: 35.1, progress: 85, elapsed: '18:42', testItem: '内阻测试' },
+  { sn: 'CP-20260511-001', voltage: 3.72, current: 2.15, temperature: 32.5, progress: 68, elapsed: '12:35', testItem: '充放电循环测试', result: '合格', standards: [
+    { name: '电压mV', upper: '3950.0000', lower: '3865.0000' },
+    { name: '内阻mΩ', upper: '30.0000', lower: '10.0000' },
+    { name: 'K值mV/h', upper: '0.0800', lower: '0.0000' },
+  ] },
+  { sn: 'CP-20260511-002', voltage: 3.85, current: 1.80, temperature: 28.3, progress: 42, elapsed: '07:20', testItem: '容量检测', result: '合格', standards: [
+    { name: '电压mV', upper: '3950.0000', lower: '3865.0000' },
+    { name: '内阻mΩ', upper: '30.0000', lower: '10.0000' },
+    { name: 'K值mV/h', upper: '0.0800', lower: '0.0000' },
+  ] },
+  { sn: 'CP-20260511-003', voltage: 3.68, current: 2.50, temperature: 35.1, progress: 85, elapsed: '18:42', testItem: '内阻测试', result: '不合格', standards: [
+    { name: '电压mV', upper: '3950.0000', lower: '3865.0000' },
+    { name: '内阻mΩ', upper: '30.0000', lower: '10.0000' },
+    { name: 'K值mV/h', upper: '0.0800', lower: '0.0000' },
+  ] },
 ]
 
 /* 电芯派克 - 已完成数据 */
@@ -1647,44 +1659,95 @@ function CellPackTestPage() {
       </div>
       {/* 正在测试 */}
       <SectionCard title="正在测试" icon={<BatteryCharging className="w-5 h-5 text-cyan-600" />}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-700">条码：</span>
+            <div className="relative">
+              <ScanBarcode className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input type="text" placeholder="请输入/扫描条码" className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 transition-all w-72" />
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
           {cellPackTestingData.map((item, i) => (
-            <motion.div key={item.sn} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }} className="testing-item-card">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
-                    <BatteryCharging className="w-4 h-4 text-cyan-600" />
+            <motion.div key={item.sn} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+              className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+                {/* 左侧：测试详情卡片 */}
+                <div className="lg:col-span-4 p-5 border-r border-slate-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-cyan-50 flex items-center justify-center">
+                        <BatteryCharging className="w-5 h-5 text-cyan-600" />
+                      </div>
+                      <div>
+                        <div className="font-mono font-semibold text-sm text-slate-700">{item.sn}</div>
+                        <div className="text-xs text-slate-400">{item.testItem}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <Clock className="w-3.5 h-3.5 text-cyan-500" />
+                      <span className="font-mono">{item.elapsed}</span>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-mono font-semibold text-sm text-slate-700">{item.sn}</div>
-                    <div className="text-xs text-slate-500">{item.testItem}</div>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="text-center p-2.5 bg-slate-50 rounded-lg">
+                      <div className="text-[11px] text-slate-500 mb-1">电压</div>
+                      <div className="text-sm font-bold text-cyan-600">{item.voltage}V</div>
+                    </div>
+                    <div className="text-center p-2.5 bg-slate-50 rounded-lg">
+                      <div className="text-[11px] text-slate-500 mb-1">电流</div>
+                      <div className="text-sm font-bold text-violet-600">{item.current}A</div>
+                    </div>
+                    <div className="text-center p-2.5 bg-slate-50 rounded-lg">
+                      <div className="text-[11px] text-slate-500 mb-1">温度</div>
+                      <div className={`text-sm font-bold ${item.temperature > 35 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.temperature}°C</div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between mb-1.5 text-xs">
+                    <span className="text-slate-400">测试进度</span>
+                    <span className="font-semibold text-cyan-600">{item.progress}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${item.progress}%`, background: 'linear-gradient(90deg, #0891b2, #06b6d4)' }} />
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <Timer className="w-3.5 h-3.5 text-cyan-500" />
-                  <span className="font-mono">{item.elapsed}</span>
+                {/* 中间：测试结果 */}
+                <div className="lg:col-span-3 p-5 flex items-center justify-center border-r border-slate-100">
+                  <div className="text-center">
+                    <div className={`text-4xl font-black tracking-wide ${item.result === '合格' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {item.result === '合格' ? '合格品' : '不合格品'}
+                    </div>
+                    <div className="mt-2 flex items-center justify-center gap-1.5">
+                      {item.result === '合格' ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-rose-500" />}
+                      <span className={`text-xs font-medium ${item.result === '合格' ? 'text-emerald-600' : 'text-rose-600'}`}>综合判定</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                <div className="text-center p-2 bg-slate-50 rounded-lg">
-                  <div className="text-xs text-slate-500 mb-0.5">电压</div>
-                  <div className="text-sm font-bold text-cyan-600">{item.voltage}V</div>
+                {/* 右侧：参数标准表格 */}
+                <div className="lg:col-span-5 p-5">
+                  <div className="text-xs font-semibold text-slate-600 mb-3">参数标准</div>
+                  <div className="overflow-hidden rounded-lg border border-slate-200">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-50">
+                          <th className="px-4 py-2 text-left font-semibold text-slate-500">参考值</th>
+                          <th className="px-4 py-2 text-center font-semibold text-slate-500">上限</th>
+                          <th className="px-4 py-2 text-center font-semibold text-slate-500">下限</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {item.standards.map((std, si) => (
+                          <tr key={si} className="hover:bg-slate-50/50">
+                            <td className="px-4 py-2.5 font-medium text-slate-700">{std.name}</td>
+                            <td className="px-4 py-2.5 text-center text-rose-500 font-mono">{std.upper}</td>
+                            <td className="px-4 py-2.5 text-center text-rose-500 font-mono">{std.lower}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="text-center p-2 bg-slate-50 rounded-lg">
-                  <div className="text-xs text-slate-500 mb-0.5">电流</div>
-                  <div className="text-sm font-bold text-violet-600">{item.current}A</div>
-                </div>
-                <div className="text-center p-2 bg-slate-50 rounded-lg">
-                  <div className="text-xs text-slate-500 mb-0.5">温度</div>
-                  <div className={`text-sm font-bold ${item.temperature > 35 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.temperature}°C</div>
-                </div>
-              </div>
-              <div className="progress-bar-track">
-                <div className="progress-bar-fill" style={{ width: `${item.progress}%`, background: `linear-gradient(90deg, #0891b2, #06b6d4)` }} />
-              </div>
-              <div className="flex justify-between mt-1.5 text-[10px] text-slate-400">
-                <span>测试进度</span>
-                <span className="font-semibold text-cyan-600">{item.progress}%</span>
               </div>
             </motion.div>
           ))}
