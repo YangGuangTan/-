@@ -109,6 +109,8 @@
     --color-amber-500: #f99c00;
     --color-amber-600: #dd7400;
     --color-amber-700: #b75000;
+    --color-green-50: #f0fdf4;
+    --color-green-600: #00a544;
     --color-emerald-50: #ecfdf5;
     --color-emerald-100: #d0fae5;
     --color-emerald-200: #a4f4cf;
@@ -221,6 +223,8 @@
       --color-amber-500: lab(72.7183% 31.8672 97.9407);
       --color-amber-600: lab(60.3514% 40.5624 87.1228);
       --color-amber-700: lab(47.2709% 42.9082 69.2966);
+      --color-green-50: lab(98.1563% -5.60117 2.75915);
+      --color-green-600: lab(59.0978% -58.6621 41.2579);
       --color-emerald-50: lab(97.8462% -6.94966 1.85487);
       --color-emerald-100: lab(94.9004% -17.0769 5.63836);
       --color-emerald-200: lab(90.2247% -31.039 9.47084);
@@ -2312,6 +2316,10 @@
     background-color: var(--foreground);
   }
 
+  .bg-green-50 {
+    background-color: var(--color-green-50);
+  }
+
   .bg-indigo-50 {
     background-color: var(--color-indigo-50);
   }
@@ -2346,6 +2354,10 @@
     .bg-primary\/20 {
       background-color: color-mix(in oklab, var(--primary) 20%, transparent);
     }
+  }
+
+  .bg-red-50 {
+    background-color: var(--color-red-50);
   }
 
   .bg-rose-50 {
@@ -3182,6 +3194,10 @@
     }
   }
 
+  .text-green-600 {
+    color: var(--color-green-600);
+  }
+
   .text-indigo-500 {
     color: var(--color-indigo-500);
   }
@@ -3204,6 +3220,10 @@
 
   .text-primary-foreground {
     color: var(--primary-foreground);
+  }
+
+  .text-red-600 {
+    color: var(--color-red-600);
   }
 
   .text-rose-100 {
